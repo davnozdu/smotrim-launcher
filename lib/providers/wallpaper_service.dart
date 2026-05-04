@@ -37,6 +37,7 @@ class WallpaperService extends ChangeNotifier {
 
   ImageProvider? _wallpaper;
   int _version = 0;
+  int _updateWallpaperCallCount = 0;
 
   ImageProvider?  get wallpaper     => _wallpaper;
   int             get version       => _version;
@@ -78,7 +79,7 @@ class WallpaperService extends ChangeNotifier {
     _wallpaperNightFile = File("${directory.path}/wallpaper_night");
 
     _lastTimeBasedEnabled = _settingsService.timeBasedWallpaperEnabled;
-    _updateWallpaper();
+    await _updateWallpaper();
     _updateTimerState();
   }
 
@@ -92,7 +93,8 @@ class WallpaperService extends ChangeNotifier {
     }
   }
 
-  void _updateWallpaper({bool force = false}) {
+  Future<void> _updateWallpaper({bool force = false}) async {
+    final callId = ++_updateWallpaperCallCount;
     final now = DateTime.now();
     final isDay = now.hour >= 6 && now.hour < 18;
     final enabled = _settingsService.timeBasedWallpaperEnabled;
@@ -100,22 +102,24 @@ class WallpaperService extends ChangeNotifier {
     ImageProvider? newWallpaper;
 
     if (enabled) {
-      if (isDay && _wallpaperDayFile.existsSync()) {
+      if (isDay && await _wallpaperDayFile.exists()) {
         newWallpaper = FileImage(_wallpaperDayFile);
-      } else if (!isDay && _wallpaperNightFile.existsSync()) {
+      } else if (!isDay && await _wallpaperNightFile.exists()) {
         newWallpaper = FileImage(_wallpaperNightFile);
-      } else if (_wallpaperFile.existsSync()) {
+      } else if (await _wallpaperFile.exists()) {
         newWallpaper = FileImage(_wallpaperFile); // Fallback
       }
     } else {
-      if (_wallpaperFile.existsSync()) {
+      if (await _wallpaperFile.exists()) {
         newWallpaper = FileImage(_wallpaperFile);
       }
     }
 
-    if (_wallpaper != newWallpaper || force) {
-      _wallpaper = newWallpaper;
-      notifyListeners();
+    if (callId == _updateWallpaperCallCount) {
+      if (_wallpaper != newWallpaper || force) {
+        _wallpaper = newWallpaper;
+        notifyListeners();
+      }
     }
   }
 
@@ -148,7 +152,7 @@ class WallpaperService extends ChangeNotifier {
       await FileImage(targetFile).evict();
 
       _version++;
-      _updateWallpaper(force: true);
+      await _updateWallpaper(force: true);
     }
   }
 
