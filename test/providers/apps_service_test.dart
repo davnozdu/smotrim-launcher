@@ -2,8 +2,10 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:flauncher/database.dart';
+import 'package:flauncher/models/app.dart';
+import 'package:flauncher/models/category.dart';
 import 'package:flauncher/providers/apps_service.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test/flutter_test.dart' hide Category;
 import 'package:mockito/mockito.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
@@ -78,6 +80,60 @@ void main() {
       expect(notified, isTrue);
     });
   });
+
+  group("AppsService Category Integration", () {
+    test("loads categories with apps correctly", () async {
+      final channel = MockFLauncherChannel();
+      final database = MockFLauncherDatabase();
+
+      final testApp1 = App(packageName: "app.1", name: "App 1", version: "1.0.0", hidden: false);
+      final testApp2 = App(packageName: "app.2", name: "App 2", version: "1.0.0", hidden: false);
+      final testApp3 = App(packageName: "app.3", name: "App 3", version: "1.0.0", hidden: false);
+      final hiddenApp = App(packageName: "app.hidden", name: "Hidden App", version: "1.0.0", hidden: true);
+
+      final category = Category(id: 1, name: "Test Category", order: 0);
+
+      when(channel.getApplications()).thenAnswer((_) => Future.value([
+        {'packageName': 'app.1', 'name': 'App 1', 'version': '1.0.0', 'sideloaded': false},
+        {'packageName': 'app.2', 'name': 'App 2', 'version': '1.0.0', 'sideloaded': false},
+        {'packageName': 'app.3', 'name': 'App 3', 'version': '1.0.0', 'sideloaded': false},
+        {'packageName': 'app.hidden', 'name': 'Hidden App', 'version': '1.0.0', 'sideloaded': false},
+      ]));
+
+      when(database.getApplications()).thenAnswer((_) => Future.value([testApp1, testApp2, testApp3, hiddenApp]));
+      when(database.getCategories()).thenAnswer((_) => Future.value([category]));
+      when(database.getAppsCategories()).thenAnswer((_) => Future.value([
+        AppCategory(categoryId: 1, appPackageName: "app.1", order: 1),
+        AppCategory(categoryId: 1, appPackageName: "app.2", order: 0),
+        AppCategory(categoryId: 1, appPackageName: "app.3", order: 2),
+      ]));
+      when(database.getLauncherSpacers()).thenAnswer((_) => Future.value([]));
+      when(database.transaction(any)).thenAnswer((realInvocation) => realInvocation.positionalArguments[0]());
+      when(database.wasCreated).thenReturn(false);
+      when(database.persistApps(any)).thenAnswer((_) => Future.value());
+      when(database.deleteApps(any)).thenAnswer((_) => Future.value());
+
+      final appsService = AppsService(channel, database);
+
+      // Wait for initialization
+      while (!appsService.initialized) {
+        await Future.delayed(const Duration(milliseconds: 10));
+      }
+
+      final categories = appsService.categories;
+      expect(categories.length, 1);
+      expect(categories[0].name, "Test Category");
+
+      final appsInCategory = categories[0].applications;
+      // Hidden apps should be filtered out from categories
+      expect(appsInCategory.length, 3);
+
+      // Should be ordered by the 'order' in AppCategory (0: app.2, 1: app.1, 2: app.3)
+      expect(appsInCategory[0].packageName, "app.2");
+      expect(appsInCategory[1].packageName, "app.1");
+      expect(appsInCategory[2].packageName, "app.3");
+    });
+  });
 }
 
 Future<AppsService> _buildInitialisedAppsService(
@@ -92,6 +148,11 @@ Future<AppsService> _buildInitialisedAppsService(
   when(database.transaction(any)).thenAnswer((realInvocation) => realInvocation.positionalArguments[0]());
   when(database.wasCreated).thenReturn(false);
   final appsService = AppsService(channel, database);
+
+  while (!appsService.initialized) {
+    await Future.delayed(const Duration(milliseconds: 10));
+  }
+
   await untilCalled(channel.addAppsChangedListener(any));
   clearInteractions(channel);
   clearInteractions(database);
