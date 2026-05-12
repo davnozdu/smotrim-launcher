@@ -25,23 +25,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _appHighlightAnimationEnabledKey = "app_highlight_animation_enabled";
 const _appKeyClickEnabledKey = "app_key_click_enabled";
-const _autoHideAppBar = "auto_hide_app_bar";
+const _autoHideAppBarKey = "auto_hide_app_bar";
 const _gradientUuidKey = "gradient_uuid";
-const _backButtonAction = "back_button_action";
-const _dateFormat = "date_format";
-const _showCategoryTitles = "show_category_titles";
-const _showAppNamesBelowIcons = "show_app_names_below_icons";
-const _themes = "app_banner_shape";
-const _hideHighlightOutlineOnHomescreen = "hide_highlight_outline_on_homescreen";
-const _appSelectorTransitionAnimationEnabled = "app_selector_transition_animation_enabled";
-const _showDateInStatusBar = "show_date_in_status_bar";
-const _showTimeInStatusBar = "show_time_in_status_bar";
-const _timeFormat = "time_format";
-const _dataUsagePeriod = "wifi_usage_period";
-const _showDataWidgetInStatusBar = "show_wifi_widget_in_status_bar";
-const String _showNetworkIndicatorInStatusBar = "show_network_indicator_in_status_bar";
-const String _accentColor = "accent_color";
-const String _screensaverClockStyle = "screensaver_clock_style";
+const _backButtonActionKey = "back_button_action";
+const _dateFormatKey = "date_format";
+const _showCategoryTitlesKey = "show_category_titles";
+const _showAppNamesBelowIconsKey = "show_app_names_below_icons";
+const _themesKey = "app_banner_shape";
+const _hideHighlightOutlineOnHomescreenKey = "hide_highlight_outline_on_homescreen";
+const _appSelectorTransitionAnimationEnabledKey = "app_selector_transition_animation_enabled";
+const _showDateInStatusBarKey = "show_date_in_status_bar";
+const _showTimeInStatusBarKey = "show_time_in_status_bar";
+const _timeFormatKey = "time_format";
+const _dataUsagePeriodKey = "wifi_usage_period";
+const _showDataWidgetInStatusBarKey = "show_wifi_widget_in_status_bar";
+const String _showNetworkIndicatorInStatusBarKey = "show_network_indicator_in_status_bar";
+const String _accentColorKey = "accent_color";
+const String _screensaverClockStyleKey = "screensaver_clock_style";
+const String _timeBasedWallpaperEnabledKey = "time_based_wallpaper_enabled";
 
 // WiFi usage period options
 const String DATA_USAGE_DAILY = "daily";
@@ -70,145 +71,210 @@ class SettingsService extends ChangeNotifier {
   static final defaultTimeFormat = "H:mm";
   final SharedPreferences _sharedPreferences;
 
+  late bool _appHighlightAnimationEnabled;
+  late bool _appKeyClickEnabled;
+  late bool _autoHideAppBarEnabled;
+  late bool _showCategoryTitles;
+  late bool _showAppNamesBelowIcons;
+  late String _themes;
+  late bool _hideHighlightOutlineOnHomescreen;
+  late bool _appSelectorTransitionAnimationEnabled;
+  late bool _showDateInStatusBar;
+  late bool _showTimeInStatusBar;
+  late String? _gradientUuid;
+  late String _backButtonAction;
+  late String _dateFormat;
+  late String _timeFormat;
+  late String _dataUsagePeriod;
+  late bool _showDataWidgetInStatusBar;
+  late bool _showNetworkIndicatorInStatusBar;
+  late String _accentColorHex;
+  late String _screensaverClockStyle;
+  late bool _timeBasedWallpaperEnabled;
 
-  bool get appHighlightAnimationEnabled => _sharedPreferences.getBool(_appHighlightAnimationEnabledKey) ?? true;
+  bool get appHighlightAnimationEnabled => _appHighlightAnimationEnabled;
 
-  bool get appKeyClickEnabled => _sharedPreferences.getBool(_appKeyClickEnabledKey) ?? true;
+  bool get appKeyClickEnabled => _appKeyClickEnabled;
 
-  bool get autoHideAppBarEnabled => _sharedPreferences.getBool(_autoHideAppBar) ?? false;
+  bool get autoHideAppBarEnabled => _autoHideAppBarEnabled;
 
-  bool get showCategoryTitles => _sharedPreferences.getBool(_showCategoryTitles) ?? true;
+  bool get showCategoryTitles => _showCategoryTitles;
 
-  bool get showAppNamesBelowIcons => _sharedPreferences.getBool(_showAppNamesBelowIcons) ?? false;
+  bool get showAppNamesBelowIcons => _showAppNamesBelowIcons;
 
-  String get themes => _sharedPreferences.getString(_themes) ?? "modern";
+  String get themes => _themes;
 
-  bool get hideHighlightOutlineOnHomescreen => _sharedPreferences.getBool(_hideHighlightOutlineOnHomescreen) ?? false;
+  bool get hideHighlightOutlineOnHomescreen => _hideHighlightOutlineOnHomescreen;
 
-  bool get appSelectorTransitionAnimationEnabled => _sharedPreferences.getBool(_appSelectorTransitionAnimationEnabled) ?? true;
+  bool get appSelectorTransitionAnimationEnabled => _appSelectorTransitionAnimationEnabled;
 
-  bool get showDateInStatusBar => _sharedPreferences.getBool(_showDateInStatusBar) ?? true;
+  bool get showDateInStatusBar => _showDateInStatusBar;
 
-  bool get showTimeInStatusBar => _sharedPreferences.getBool(_showTimeInStatusBar) ?? true;
+  bool get showTimeInStatusBar => _showTimeInStatusBar;
 
-  String? get gradientUuid => _sharedPreferences.getString(_gradientUuidKey);
+  String? get gradientUuid => _gradientUuid;
 
-  String get backButtonAction => _sharedPreferences.getString(_backButtonAction) ?? BACK_BUTTON_ACTION_NOTHING;
+  String get backButtonAction => _backButtonAction;
 
-  String get dateFormat => _sharedPreferences.getString(_dateFormat) ?? defaultDateFormat;
+  String get dateFormat => _dateFormat;
 
-  String get timeFormat => _sharedPreferences.getString(_timeFormat) ?? defaultTimeFormat;
+  String get timeFormat => _timeFormat;
 
-  String get dataUsagePeriod => _sharedPreferences.getString(_dataUsagePeriod) ?? DATA_USAGE_DAILY;
+  String get dataUsagePeriod => _dataUsagePeriod;
 
-  bool get showDataWidgetInStatusBar => _sharedPreferences.getBool(_showDataWidgetInStatusBar) ?? true;
+  bool get showDataWidgetInStatusBar => _showDataWidgetInStatusBar;
 
-  bool get showNetworkIndicatorInStatusBar => _sharedPreferences.getBool(_showNetworkIndicatorInStatusBar) ?? true;
+  bool get showNetworkIndicatorInStatusBar => _showNetworkIndicatorInStatusBar;
 
-  String get accentColorHex => _sharedPreferences.getString(_accentColor) ?? ACCENT_COLOR_PURPLE;
+  String get accentColorHex => _accentColorHex;
 
-  String get screensaverClockStyle => _sharedPreferences.getString(_screensaverClockStyle) ?? "minimal";
+  String get screensaverClockStyle => _screensaverClockStyle;
 
   Color get accentColor {
     final hex = accentColorHex;
     return Color(int.parse("0xFF$hex"));
   }
 
-  SettingsService(
-    this._sharedPreferences
-  );
-
-  Future<void> set(String key, bool value) async {
-    await _sharedPreferences.setBool(key, value);
-    notifyListeners();
+  SettingsService(this._sharedPreferences) {
+    _appHighlightAnimationEnabled = _sharedPreferences.getBool(_appHighlightAnimationEnabledKey) ?? true;
+    _appKeyClickEnabled = _sharedPreferences.getBool(_appKeyClickEnabledKey) ?? true;
+    _autoHideAppBarEnabled = _sharedPreferences.getBool(_autoHideAppBarKey) ?? false;
+    _showCategoryTitles = _sharedPreferences.getBool(_showCategoryTitlesKey) ?? true;
+    _showAppNamesBelowIcons = _sharedPreferences.getBool(_showAppNamesBelowIconsKey) ?? false;
+    _themes = _sharedPreferences.getString(_themesKey) ?? "modern";
+    _hideHighlightOutlineOnHomescreen = _sharedPreferences.getBool(_hideHighlightOutlineOnHomescreenKey) ?? false;
+    _appSelectorTransitionAnimationEnabled = _sharedPreferences.getBool(_appSelectorTransitionAnimationEnabledKey) ?? true;
+    _showDateInStatusBar = _sharedPreferences.getBool(_showDateInStatusBarKey) ?? true;
+    _showTimeInStatusBar = _sharedPreferences.getBool(_showTimeInStatusBarKey) ?? true;
+    _gradientUuid = _sharedPreferences.getString(_gradientUuidKey);
+    _backButtonAction = _sharedPreferences.getString(_backButtonActionKey) ?? BACK_BUTTON_ACTION_NOTHING;
+    _dateFormat = _sharedPreferences.getString(_dateFormatKey) ?? defaultDateFormat;
+    _timeFormat = _sharedPreferences.getString(_timeFormatKey) ?? defaultTimeFormat;
+    _dataUsagePeriod = _sharedPreferences.getString(_dataUsagePeriodKey) ?? DATA_USAGE_DAILY;
+    _showDataWidgetInStatusBar = _sharedPreferences.getBool(_showDataWidgetInStatusBarKey) ?? true;
+    _showNetworkIndicatorInStatusBar = _sharedPreferences.getBool(_showNetworkIndicatorInStatusBarKey) ?? true;
+    _accentColorHex = _sharedPreferences.getString(_accentColorKey) ?? ACCENT_COLOR_PURPLE;
+    _screensaverClockStyle = _sharedPreferences.getString(_screensaverClockStyleKey) ?? "minimal";
+    _timeBasedWallpaperEnabled = _sharedPreferences.getBool(_timeBasedWallpaperEnabledKey) ?? false;
   }
 
   Future<void> setAppHighlightAnimationEnabled(bool value) async {
-    return set(_appHighlightAnimationEnabledKey, value);
+    await _sharedPreferences.setBool(_appHighlightAnimationEnabledKey, value);
+    _appHighlightAnimationEnabled = value;
+    notifyListeners();
   }
 
   Future<void> setAppKeyClickEnabled(bool value) async {
-    return set(_appKeyClickEnabledKey, value);
+    await _sharedPreferences.setBool(_appKeyClickEnabledKey, value);
+    _appKeyClickEnabled = value;
+    notifyListeners();
   }
 
   Future<void> setAutoHideAppBarEnabled(bool value) async {
-    return set(_autoHideAppBar, value);
+    await _sharedPreferences.setBool(_autoHideAppBarKey, value);
+    _autoHideAppBarEnabled = value;
+    notifyListeners();
   }
 
   Future<void> setGradientUuid(String value) async {
     await _sharedPreferences.setString(_gradientUuidKey, value);
+    _gradientUuid = value;
     notifyListeners();
   }
 
   Future<void> setBackButtonAction(String value) async {
-    await _sharedPreferences.setString(_backButtonAction, value);
+    await _sharedPreferences.setString(_backButtonActionKey, value);
+    _backButtonAction = value;
     notifyListeners();
   }
 
   Future<void> setDateTimeFormat(String dateFormatString, String timeFormatString) async {
     await Future.wait([
-      _sharedPreferences.setString(_dateFormat, dateFormatString),
-      _sharedPreferences.setString(_timeFormat, timeFormatString)
+      _sharedPreferences.setString(_dateFormatKey, dateFormatString),
+      _sharedPreferences.setString(_timeFormatKey, timeFormatString)
     ]);
+    _dateFormat = dateFormatString;
+    _timeFormat = timeFormatString;
     notifyListeners();
   }
 
   Future<void> setShowCategoryTitles(bool show) async {
-    return set(_showCategoryTitles, show);
+    await _sharedPreferences.setBool(_showCategoryTitlesKey, show);
+    _showCategoryTitles = show;
+    notifyListeners();
   }
 
   Future<void> setShowAppNamesBelowIcons(bool show) async {
-    return set(_showAppNamesBelowIcons, show);
+    await _sharedPreferences.setBool(_showAppNamesBelowIconsKey, show);
+    _showAppNamesBelowIcons = show;
+    notifyListeners();
   }
 
   Future<void> setThemes(String shape) async {
-    await _sharedPreferences.setString(_themes, shape);
+    await _sharedPreferences.setString(_themesKey, shape);
+    _themes = shape;
     notifyListeners();
   }
 
   Future<void> setHideHighlightOutlineOnHomescreen(bool enabled) async {
-    return set(_hideHighlightOutlineOnHomescreen, enabled);
+    await _sharedPreferences.setBool(_hideHighlightOutlineOnHomescreenKey, enabled);
+    _hideHighlightOutlineOnHomescreen = enabled;
+    notifyListeners();
   }
 
   Future<void> setAppSelectorTransitionAnimationEnabled(bool enabled) async {
-    return set(_appSelectorTransitionAnimationEnabled, enabled);
+    await _sharedPreferences.setBool(_appSelectorTransitionAnimationEnabledKey, enabled);
+    _appSelectorTransitionAnimationEnabled = enabled;
+    notifyListeners();
   }
 
   Future<void> setShowDateInStatusBar(bool show) async {
-    return set(_showDateInStatusBar, show);
+    await _sharedPreferences.setBool(_showDateInStatusBarKey, show);
+    _showDateInStatusBar = show;
+    notifyListeners();
   }
 
   Future<void> setShowTimeInStatusBar(bool show) async {
-    return set(_showTimeInStatusBar, show);
+    await _sharedPreferences.setBool(_showTimeInStatusBarKey, show);
+    _showTimeInStatusBar = show;
+    notifyListeners();
   }
 
   Future<void> setDataUsagePeriod(String period) async {
-    await _sharedPreferences.setString(_dataUsagePeriod, period);
+    await _sharedPreferences.setString(_dataUsagePeriodKey, period);
+    _dataUsagePeriod = period;
     notifyListeners();
   }
 
   Future<void> setShowDataWidgetInStatusBar(bool show) async {
-    return set(_showDataWidgetInStatusBar, show);
+    await _sharedPreferences.setBool(_showDataWidgetInStatusBarKey, show);
+    _showDataWidgetInStatusBar = show;
+    notifyListeners();
   }
 
   Future<void> setShowNetworkIndicatorInStatusBar(bool show) async {
-    return set(_showNetworkIndicatorInStatusBar, show);
+    await _sharedPreferences.setBool(_showNetworkIndicatorInStatusBarKey, show);
+    _showNetworkIndicatorInStatusBar = show;
+    notifyListeners();
   }
 
   Future<void> setAccentColor(String colorHex) async {
-    await _sharedPreferences.setString(_accentColor, colorHex);
+    await _sharedPreferences.setString(_accentColorKey, colorHex);
+    _accentColorHex = colorHex;
     notifyListeners();
   }
 
   Future<void> setScreensaverClockStyle(String style) async {
-    await _sharedPreferences.setString(_screensaverClockStyle, style);
+    await _sharedPreferences.setString(_screensaverClockStyleKey, style);
+    _screensaverClockStyle = style;
     notifyListeners();
   }
 
-  bool get timeBasedWallpaperEnabled => _sharedPreferences.getBool("time_based_wallpaper_enabled") ?? false;
+  bool get timeBasedWallpaperEnabled => _timeBasedWallpaperEnabled;
 
   Future<void> setTimeBasedWallpaperEnabled(bool enabled) async {
-    await _sharedPreferences.setBool("time_based_wallpaper_enabled", enabled);
+    await _sharedPreferences.setBool(_timeBasedWallpaperEnabledKey, enabled);
+    _timeBasedWallpaperEnabled = enabled;
     notifyListeners();
   }
 }
