@@ -99,6 +99,8 @@ void main() {
         {'packageName': 'app.3', 'name': 'App 3', 'version': '1.0.0', 'sideloaded': false},
         {'packageName': 'app.hidden', 'name': 'Hidden App', 'version': '1.0.0', 'sideloaded': false},
       ]));
+      when(channel.getApplicationIcon(any)).thenAnswer((_) => Future.value(Uint8List(0)));
+      when(channel.getApplicationBanner(any)).thenAnswer((_) => Future.value(Uint8List(0)));
 
       when(database.getApplications()).thenAnswer((_) => Future.value([testApp1, testApp2, testApp3, hiddenApp]));
       when(database.getCategories()).thenAnswer((_) => Future.value([category]));
@@ -141,6 +143,8 @@ Future<AppsService> _buildInitialisedAppsService(
   MockFLauncherDatabase database,
 ) async {
   when(channel.getApplications()).thenAnswer((_) => Future.value([]));
+  when(channel.getApplicationIcon(any)).thenAnswer((_) => Future.value(Uint8List(0)));
+  when(channel.getApplicationBanner(any)).thenAnswer((_) => Future.value(Uint8List(0)));
   when(database.getApplications()).thenAnswer((_) => Future.value([]));
   when(database.getAppsCategories()).thenAnswer((_) => Future.value([]));
   when(database.getCategories()).thenAnswer((_) => Future.value([]));
