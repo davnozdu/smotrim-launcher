@@ -27,6 +27,7 @@ import 'package:flauncher/database.dart';
 import 'package:flauncher/flauncher_channel.dart';
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter/widgets.dart' hide Category;
+import 'package:pool/pool.dart';
 
 import '../models/app.dart';
 import '../models/category.dart';
@@ -199,11 +200,12 @@ class AppsService extends ChangeNotifier {
     // Only cache apps that are not hidden
     final visibleApps =
         _applications.values.where((app) => !app.hidden).toList();
+    final pool = Pool(10);
     for (var app in visibleApps) {
-      // Don't await, let it run in background
-      getAppIcon(app.packageName);
+      // Don't await, let it run in background with concurrency limit
+      pool.withResource(() => getAppIcon(app.packageName));
       // Also cache banner if it's likely to be needed soon
-      getAppBanner(app.packageName);
+      pool.withResource(() => getAppBanner(app.packageName));
     }
   }
 
