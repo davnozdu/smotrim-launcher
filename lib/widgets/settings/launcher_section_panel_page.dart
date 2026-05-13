@@ -187,6 +187,41 @@ class LauncherSectionPanelPage extends StatelessWidget
               children: [
                 Text(title, style: Theme.of(context).textTheme.titleLarge, textAlign: TextAlign.center),
                 Divider(),
+                if (creating) ...[
+                  _listTile(
+                    context,
+                    Text(localizations.type),
+                    Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: DropdownButtonFormField<LauncherSectionType>(
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(),
+                          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white, width: 2)),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        isDense: true,
+                        isExpanded: true,
+                        value: sectionType,
+                        onChanged: (value) {
+                          if (value != null) {
+                            state.setSectionType(value);
+                          }
+                        },
+                        items: [
+                          DropdownMenuItem(
+                            value: LauncherSectionType.Category,
+                            child: Text(localizations.category, style: Theme.of(context).textTheme.bodySmall),
+                          ),
+                          DropdownMenuItem(
+                            value: LauncherSectionType.Spacer,
+                            child: Text(localizations.spacer, style: Theme.of(context).textTheme.bodySmall),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Divider(),
+                ],
                 sectionSpecificSettings,
                 Divider(),
               Selector<_SettingsState, bool>(
