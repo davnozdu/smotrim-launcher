@@ -33,15 +33,16 @@ class SmotrimBanner extends StatelessWidget {
     );
 
     return IgnorePointer(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        alignment: Alignment.center,
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 16,
-          children: [
+      child: SafeArea(
+        top: false,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            children: [
             Text(localizations.bannerTagline, style: textStyle),
             const Text(
               phone,
@@ -54,7 +55,8 @@ class SmotrimBanner extends StatelessWidget {
                 ],
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
