@@ -51,6 +51,16 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
+// Release signing config (kept in its own file so `flutter build` does not
+// overwrite it the way it rewrites local.properties).
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withReader('UTF-8') { reader ->
+        keystoreProperties.load(reader)
+    }
+}
+
 def secretProperties = new Properties()
 secretProperties.setProperty("signing_keystore_password", "${System.getenv('FLAUNCHER_KEYSTORE_PASSWORD')}")
 secretProperties.setProperty("signing_key_password", "${System.getenv('FLAUNCHER_SIGNING_KEY_PASSWORD')}")
@@ -79,12 +89,12 @@ android {
     signingConfigs {
         debug {}
         release {
-            if (localProperties['storeFile'] != null) {
-                storeFile file(localProperties['storeFile'])
+            if (keystoreProperties['storeFile'] != null) {
+                storeFile file(keystoreProperties['storeFile'])
                 storeType "PKCS12"
-                storePassword localProperties['storePassword']
-                keyAlias localProperties['keyAlias']
-                keyPassword localProperties['keyPassword']
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
             }
         }
     }

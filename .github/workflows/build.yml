@@ -45,13 +45,13 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/keystore.jks"
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/keystore.p12"
             {
-              echo "storeFile=$RUNNER_TEMP/keystore.jks"
+              echo "storeFile=$RUNNER_TEMP/keystore.p12"
               echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}"
               echo "keyAlias=${{ secrets.KEY_ALIAS }}"
               echo "keyPassword=${{ secrets.KEY_PASSWORD }}"
-            } >> android/local.properties
+            } > android/keystore.properties
             echo "signed=true" >> "$GITHUB_OUTPUT"
           else
             echo "signed=false" >> "$GITHUB_OUTPUT"
