@@ -81,6 +81,7 @@ android {
         release {
             if (localProperties['storeFile'] != null) {
                 storeFile file(localProperties['storeFile'])
+                storeType "PKCS12"
                 storePassword localProperties['storePassword']
                 keyAlias localProperties['keyAlias']
                 keyPassword localProperties['keyPassword']
