@@ -122,5 +122,13 @@
     "subscriptionProcessingHours": "Los pagos se procesan en horario laboral; los fines de semana bajo petición.",
     "subscriptionSmsConfirmation": "Tras la renovación recibirá una confirmación por SMS.",
     "subscriptionContactLabel": "Preguntas sobre el pago",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "updateAvailable": "Actualización disponible: {version}",
+    "@updateAvailable": {
+        "placeholders": {
+            "version": { "type": "String" }
+        }
+    },
+    "updateTapToInstall": "Pulse OK para actualizar",
+    "updateDownloading": "Descargando actualización…"
 }

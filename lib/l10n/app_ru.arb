@@ -126,5 +126,13 @@
     "subscriptionProcessingHours": "Платежи обрабатываются в рабочее время, в выходные — по запросу.",
     "subscriptionSmsConfirmation": "После продления вы получите SMS-подтверждение.",
     "subscriptionContactLabel": "Вопросы по оплате",
-    "close": "Закрыть"
+    "close": "Закрыть",
+    "updateAvailable": "Доступно обновление: {version}",
+    "@updateAvailable": {
+        "placeholders": {
+            "version": { "type": "String" }
+        }
+    },
+    "updateTapToInstall": "Нажмите OK, чтобы обновить",
+    "updateDownloading": "Загрузка обновления…"
 }

@@ -139,12 +139,16 @@ android {
         variant.outputs.all { output ->
             def abi = output.getFilter(com.android.build.OutputFile.ABI)
             if (abi != null) {
-                outputFileName = "LTvLauncher-${abi}-${variant.buildType.name}.apk"
+                outputFileName = "SmotrimLauncher-${abi}-${variant.buildType.name}.apk"
             } else {
-                outputFileName = "LTvLauncher-universal-${variant.buildType.name}.apk"
+                outputFileName = "SmotrimLauncher-universal-${variant.buildType.name}.apk"
             }
         }
     }
+}
+
+dependencies {
+    implementation "androidx.core:core:1.13.1"
 }
 
 flutter {

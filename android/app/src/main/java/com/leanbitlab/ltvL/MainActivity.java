@@ -92,6 +92,7 @@ public class MainActivity extends FlutterActivity {
                 case "openScreensaverSettings" -> result.success(openScreensaverSettings());
                 case "openAppInfo" -> result.success(openAppInfo(call.arguments()));
                 case "uninstallApp" -> result.success(uninstallApp(call.arguments()));
+                case "installApk" -> result.success(installApk(call.arguments()));
                 case "isDefaultLauncher" -> result.success(isDefaultLauncher());
                 case "checkForGetContentAvailability" -> result.success(checkForGetContentAvailability());
                 case "startAmbientMode" -> result.success(startAmbientMode());
@@ -401,6 +402,23 @@ public class MainActivity extends FlutterActivity {
                 .setData(Uri.fromParts("package", packageName, null));
 
         return tryStartActivity(intent);
+    }
+
+    private boolean installApk(String filePath) {
+        try {
+            java.io.File file = new java.io.File(filePath);
+            Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                    this, getPackageName() + ".provider", file);
+            Intent intent = new Intent(Intent.ACTION_VIEW)
+                    .setDataAndType(uri, "application/vnd.android.package-archive")
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     private boolean checkForGetContentAvailability() {

@@ -51,6 +51,8 @@ class FLauncherChannel {
 
   Future<void> uninstallApp(String packageName) async => await _methodChannel.invokeMethod('uninstallApp', packageName);
 
+  Future<bool> installApk(String filePath) async => await _methodChannel.invokeMethod('installApk', filePath);
+
   Future<bool> isDefaultLauncher() async => await _methodChannel.invokeMethod('isDefaultLauncher');
 
   Future<bool> checkForGetContentAvailability() async =>

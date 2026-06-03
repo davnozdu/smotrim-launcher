@@ -126,5 +126,13 @@
     "subscriptionProcessingHours": "Платежі обробляються в робочий час, у вихідні — за запитом.",
     "subscriptionSmsConfirmation": "Після продовження ви отримаєте SMS-підтвердження.",
     "subscriptionContactLabel": "Питання щодо оплати",
-    "close": "Закрити"
+    "close": "Закрити",
+    "updateAvailable": "Доступне оновлення: {version}",
+    "@updateAvailable": {
+        "placeholders": {
+            "version": { "type": "String" }
+        }
+    },
+    "updateTapToInstall": "Натисніть OK, щоб оновити",
+    "updateDownloading": "Завантаження оновлення…"
 }

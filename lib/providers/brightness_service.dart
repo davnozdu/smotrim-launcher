@@ -76,6 +76,7 @@ class BrightnessService extends ChangeNotifier {
   static const _platform = MethodChannel('me.efesser.flauncher/method');
   final SharedPreferences _sharedPreferences;
   Timer? _timer;
+  TimeSlot? _lastAppliedSlot;
 
   bool _hasPermission = true;
   bool get hasPermission => _hasPermission;
@@ -191,9 +192,10 @@ class BrightnessService extends ChangeNotifier {
 
   Future<void> applyCurrentSlotBrightness() async {
     if (!isEnabled) return;
-    
+
     final currentSlot = getCurrentTimeSlot();
     final brightness = getBrightnessForSlot(currentSlot);
+    _lastAppliedSlot = currentSlot;
     await _applyBrightness(brightness);
   }
 
@@ -215,9 +217,13 @@ class BrightnessService extends ChangeNotifier {
 
   void _startScheduler() {
     _stopScheduler();
-    // Check every minute
+    _lastAppliedSlot = null;
+    // Check every minute, but only re-apply brightness when the time slot
+    // actually changes (instead of writing the same value 1440x/day).
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
-      applyCurrentSlotBrightness();
+      if (getCurrentTimeSlot() != _lastAppliedSlot) {
+        applyCurrentSlotBrightness();
+      }
     });
   }
 

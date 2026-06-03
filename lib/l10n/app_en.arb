@@ -126,5 +126,13 @@
     "subscriptionProcessingHours": "Payments are processed during business hours; on weekends upon request.",
     "subscriptionSmsConfirmation": "After renewal you will receive an SMS confirmation.",
     "subscriptionContactLabel": "Payment questions",
-    "close": "Close"
+    "close": "Close",
+    "updateAvailable": "Update available: {version}",
+    "@updateAvailable": {
+        "placeholders": {
+            "version": { "type": "String" }
+        }
+    },
+    "updateTapToInstall": "Press OK to update",
+    "updateDownloading": "Downloading update…"
 }
