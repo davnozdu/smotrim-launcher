@@ -69,6 +69,20 @@ class FLauncherApp extends StatelessWidget
         GlobalWidgetsLocalizations.delegate
       ],
       supportedLocales: AppLocalizations.supportedLocales,
+      // Follow the system language: pick the first device locale whose
+      // language is supported, otherwise fall back to English.
+      localeListResolutionCallback: (deviceLocales, supportedLocales) {
+        if (deviceLocales != null) {
+          for (final deviceLocale in deviceLocales) {
+            for (final supportedLocale in supportedLocales) {
+              if (supportedLocale.languageCode == deviceLocale.languageCode) {
+                return supportedLocale;
+              }
+            }
+          }
+        }
+        return const Locale('en');
+      },
       title: 'Smotrim.CZ Launcher',
         theme: ThemeData(
           useMaterial3: true,

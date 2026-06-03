@@ -1,64 +1,25 @@
 # Smotrim.CZ Launcher
 
-> **This project is a fork.**
-> **Smotrim.CZ Launcher** is a customized fork of [LtvLauncher](https://github.com/LeanBitLab/LtvLauncher) by [LeanBitLab](https://github.com/LeanBitLab), which itself is a fork of [FLauncher](https://github.com/osrosal/flauncher) (originally by [etienn01](https://gitlab.com/flauncher/flauncher)) — an open-source alternative launcher for Android TV. Licensed under GPLv3.
+**Smotrim.CZ Launcher** is a minimal, open-source launcher for Android TV, branded for the **smotrim.cz** internet TV service.
 
-This build is branded for the **smotrim.cz** internet TV service. On top of the upstream launcher it adds:
-
-- **Russian and Ukrainian** localizations.
-- A bottom **info banner** (`smotrim.cz` + support phone).
-- A **"Renew subscription"** button on the home screen with payment instructions (Czech QR Platba).
-- Builds and signs the APK on **GitHub Actions** with a persistent key, so updates install over previous versions.
-
-<a href="https://github.com/LeanBitLab/LtvLauncher/releases/latest">
+<a href="https://github.com/davnozdu/LtvLauncher/releases/latest">
   <img alt="Get it on GitHub" src="https://raw.githubusercontent.com/rubenpgrady/get-it-on-github/refs/heads/main/get-it-on-github.png" height="50">
 </a>
-<a href="https://apt.izzysoft.de/fdroid/index/apk/com.leanbitlab.ltvL">
-  <img alt="Get it on IzzyOnDroid" src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" height="50">
-</a>
-<a href="https://go.aftvnews.com">
-  <img alt="Downloader Code: 7259827" src=".github/assets/get_it_on_downloader.png" height="50">
-</a>
 
-## Key Features & Enhancements
+## Features
 
-- **Data Usage Widget** - Track daily Internet consumption (WiFi, Ethernet, Mobile) directly from the status bar.
-- **Inbuilt OLED Screensaver** - Minimal screensaver with 30s clock position shifting to prevent burn-in.
-- **Easy WiFi Access** - Network indicator doubles as a shortcut to system WiFi settings.
-- **Quick Presets** - Select Time/Date formats and Category names from a list (No keyboard required).
-- **Time-Based Wallpaper** - Automatically switch between day and night backgrounds.
-- **Pitch Black Wallpaper** - Added a true black gradient background option.
-- **Enhanced Focus Indicator** - New double-border design ensures perfect visibility on any background.
-- **Smart Navigation** - Fixed "bounce back" issues and optimized focus traversal for a smoother experience.
-- **Refined Settings** - Reorganized menus with a new "Miscellaneous" section and unified focus styles.
-- **Accent Color Support** - Personalize the UI with multiple color presets.
-- **Themes** - Switch between distinct visual styles (Default, Premium, Classic, Capsule).
-- **Focus Customization** - Toggle focus outline and transition animations to tailor your experience.
-- **Edge Bump Animation** - Visual feedback when reaching the edge of a row, preventing accidental focus wrapping.
-- **Improved Sorting** - Easily reorder categories using Left/Right arrow keys instead of finicky gestures.
-- **Left Side Settings** - Reorganized settings panel now opens on the left for better reach.
-- **Brightness Scheduler (Experimental)** - Automatically adjust system brightness based on time of day (Requires `WRITE_SETTINGS` permission via ADB).
-- **New Category** - Added "Favorites".
-- **Custom Banner Support** - Display and apply your own personalized custom banners.
-- **Optimizations** - Improved performance with aggressive icon caching and code cleanups.
-
-> [!WARNING]
-> **Brightness Scheduler is an experimental feature.** It is currently untested across all devices and may be removed or modified in future versions based on user feedback.
-
-## Original FLauncher Features
-
-- [x] No ads
-- [x] Customizable categories
-- [x] Manually reorder apps within categories
-- [x] Wallpaper support
-- [x] Open "Android Settings"
-- [x] Open "App info"
-- [x] Uninstall app
-- [x] Clock
-- [x] Switch between row and grid for categories
-- [x] Support for non-TV (sideloaded) apps
-- [x] Navigation sound feedback
-- [x] Official support for `armeabi-v7a`, `arm64-v8a`, and `x86_64` devices.
+- **Russian & Ukrainian** — full localization; the interface language follows your system settings.
+- **Subscription renewal** — a "Renew subscription" button on the home screen opens payment instructions with a Czech QR Platba code (amount pre-filled).
+- **Info banner** — `smotrim.cz` and the support phone number are always visible at the bottom of the home screen.
+- **Data Usage Widget** — track daily Internet consumption (WiFi, Ethernet, Mobile) from the status bar.
+- **OLED Screensaver** — minimal screensaver with clock position shifting to prevent burn-in.
+- **Easy WiFi Access** — the network indicator doubles as a shortcut to system WiFi settings.
+- **Quick Presets** — pick time/date formats and category names from a list (no keyboard required).
+- **Time-Based Wallpaper** — automatically switch between day and night backgrounds.
+- **Themes & Accent Color** — multiple visual styles (Default, Premium, Classic, Capsule) and color presets.
+- **Customizable categories** — reorder apps and categories, row or grid layout, custom banners, a "Favorites" category.
+- **No ads**, support for non-TV (sideloaded) apps, navigation sound feedback.
+- **Official support** for `armeabi-v7a` and `arm64-v8a` devices.
 
 ## Screenshots
 
@@ -79,27 +40,21 @@ This build is branded for the **smotrim.cz** internet TV service. On top of the 
   </tr>
 </table>
 
-
-## Set LTvLauncher as default launcher
+## Set Smotrim.CZ Launcher as the default launcher
 
 ### Method 1: Remap the Home button
-This is the "safer" and easiest way. Use [key Mapper](https://github.com/keymapperorg/KeyMapper) to remap the Home button of the remote to launch LTvLauncher.
+The safest and easiest way. Use [Key Mapper](https://github.com/keymapperorg/KeyMapper) to remap the Home button of the remote to launch Smotrim.CZ Launcher.
 
 ### Method 2: Disable the default launcher
-**:warning: Disclaimer :warning:**
+> **:warning: You do this at your own risk and are responsible for any malfunction on your device.**
 
-**You are doing this at your own risk, and you'll be responsible in any case of malfunction on your device.**
-
-The following commands have been tested on Chromecast with Google TV only. This may be different on other devices.
-
-Once the default launcher is disabled, press the Home button on the remote, and you'll be prompted by the system to choose which app to set as default.
+The following commands were tested on Chromecast with Google TV only and may differ on other devices. Once the default launcher is disabled, press the Home button and the system will prompt you to choose a default.
 
 #### Disable default launcher
 ```shell
-# Disable com.google.android.apps.tv.launcherx which is the default launcher on CCwGTV
+# Disable com.google.android.apps.tv.launcherx (default launcher on CCwGTV)
 $ adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
-# com.google.android.tungsten.setupwraith will then be used as a 'fallback' and will automatically
-# re-enable the default launcher, so disable it as well
+# com.google.android.tungsten.setupwraith re-enables the default launcher, so disable it too
 $ adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith
 ```
 
@@ -110,26 +65,17 @@ $ adb shell pm enable com.google.android.tungsten.setupwraith
 ```
 
 #### Known issues
-On Chromecast with Google TV (maybe others), the "YouTube" remote button will stop working if the default launcher is disabled. As a workaround, you can use [key Mapper](https://github.com/keymapperorg/KeyMapper) to remap it correctly.
+On Chromecast with Google TV (and possibly others), the "YouTube" remote button stops working while the default launcher is disabled. As a workaround, remap it with [Key Mapper](https://github.com/keymapperorg/KeyMapper).
 
 ## Wallpaper
-Because Android's `WallpaperManager` is not available on some Android TV devices, FLauncher implements its own wallpaper management method.
+Because Android's `WallpaperManager` is not available on some Android TV devices, the launcher implements its own wallpaper management. Changing the wallpaper requires a file explorer installed on the device to pick a file.
 
-Please note that changing wallpaper requires a file explorer to be installed on the device in order to pick a file.
+## Building
+APKs are built and signed automatically on **GitHub Actions** (`.github/workflows/build.yml`). Release builds are signed with a persistent key stored in repository secrets, so updates install over previous versions.
 
-## Credits
-
-### Original Projects
-- **[FLauncher](https://gitlab.com/flauncher/flauncher)** by [etienn01](https://github.com/etienn01) - The original project
-- **[FLauncher (Fork)](https://github.com/osrosal/flauncher)** by [osrosal](https://github.com/osrosal) - The base for this fork
+## License
+Licensed under the **GNU General Public License v3.0**. See [LICENSE](LICENSE).
 
 ---
 
-### LTvLauncher
-- Customizations by [LeanBitLab](https://github.com/LeanBitLab)
-
----
-
-## 🛡️ LeanBitLab Ecosystem
-
-Check out our other projects: 👉 [LeanBitLab Projects](https://github.com/LeanBitLab#-current-projects)
+> **This project is a fork.** It is based on [LtvLauncher](https://github.com/LeanBitLab/LtvLauncher), which in turn is a fork of [FLauncher](https://gitlab.com/flauncher/flauncher) © 2021 Étienne Fesser. As required by the GPLv3, the original copyright and license are preserved.

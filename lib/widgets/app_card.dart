@@ -446,7 +446,11 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
       bytes = await service.getAppIcon(widget.application.packageName);
     }
 
-    return (type, MemoryImage(bytes));
+    // Cap the decoded resolution so an over-sized banner/icon supplied by an
+    // app does not blow up the image cache. The cap is generous enough to stay
+    // crisp on a TV card and is a no-op for the usual small assets.
+    final cacheWidth = type == AppImageType.Banner ? 512 : 192;
+    return (type, ResizeImage(MemoryImage(bytes), width: cacheWidth, policy: ResizeImagePolicy.fit));
   }
 
   Widget _appImage()
