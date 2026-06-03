@@ -1,0 +1,117 @@
+{
+    "aboutFlauncher": "О LTvLauncher",
+    "addCategory": "Добавить категорию",
+    "addSection": "Добавить раздел",
+    "alphabetical": "По алфавиту",
+    "appCardHighlightAnimation": "Анимация выделения карточки приложения",
+    "appInfo": "Сведения о приложении",
+    "appKeyClick": "Звук при нажатии клавиш",
+    "applications": "Приложения",
+    "autoHideAppBar": "Автоматически скрывать строку состояния",
+    "backButtonAction": "Действие кнопки «Назад»",
+    "category": "Категория",
+    "categories": "Категории",
+    "columnCount": "Количество столбцов",
+    "date": "Дата",
+    "dateAndTimeFormat": "Формат даты и времени",
+    "delete": "Удалить",
+    "dialogOptionBackButtonActionDoNothing": "Ничего не делать",
+    "dialogOptionBackButtonActionShowScreensaver": "Показать заставку",
+    "dialogOptionBackButtonActionShowClock": "Показать часы",
+    "dialogTextNoFileExplorer": "Установите файловый менеджер, чтобы выбрать изображение.",
+    "dialogTitleBackButtonAction": "Выберите действие кнопки «Назад»",
+    "disambiguateCategoryTitle": "{title} (Категория)",
+    "@disambiguateCategoryTitle": {
+        "placeholders": {
+            "title": {
+                "type": "String"
+            }
+        }
+    },
+    "formattedDate": "Форматированная дата: {dateString}",
+    "@formattedDate": {
+        "placeholders": {
+            "dateString": {
+                "type": "String"
+            }
+        }
+    },
+    "formattedTime": "Форматированное время: {timeString}",
+    "@formattedTime": {
+        "placeholders": {
+            "timeString": {
+                "type": "String"
+            }
+        }
+    },
+    "gradient": "Градиент",
+    "favoriteApps": "Избранные приложения",
+    "grid": "Сетка",
+    "height": "Высота",
+    "hide": "Скрыть",
+    "hiddenApplications": "Скрытые приложения",
+    "launcherSections": "Разделы",
+    "layout": "Расположение",
+    "loading": "Загрузка",
+    "manual": "Вручную",
+    "modifySection": "Изменить раздел",
+    "mustNotBeEmpty": "Не должно быть пустым",
+    "name": "Название",
+    "newSection": "Новый раздел",
+    "noDateFormatSpecified": "Формат даты не указан",
+    "noTimeFormatSpecified": "Формат времени не указан",
+    "nonTvApplications": "Не-ТВ приложения",
+    "open": "Открыть",
+    "orSelectFormatSpecifiers": "Или выберите спецификаторы формата",
+    "picture": "Изображение",
+    "removeFrom": "Убрать из {name}",
+    "@removeFrom": {
+        "placeholders": {
+            "name": { "type": "String" }
+        }
+    },
+    "renameCategory": "Переименовать категорию",
+    "reorder": "Изменить порядок",
+    "row": "Строка",
+    "rowHeight": "Высота строки",
+    "save": "Сохранить",
+    "spacer": "Разделитель",
+    "spacerMaxHeightRequirement": "Должно быть больше 0 и не больше 500",
+    "statusBar": "Строка состояния",
+    "settings": "Настройки",
+    "show": "Показать",
+    "showCategoryTitles": "Показывать названия категорий",
+    "themes": "Темы",
+    "hideHighlightOutlineOnHomescreen": "Скрыть контур выделения на главном экране",
+    "appSelectorTransitionAnimation": "Анимация перехода выбора приложений",
+    "sort": "Сортировка",
+    "systemSettings": "Системные настройки",
+    "textAboutDialog": "LTvLauncher — это настраиваемый лаунчер с открытым исходным кодом для Android TV, основанный на FLauncher.\n\nИсходный код доступен по адресу {repoUrl}.",
+    "@textAboutDialog": {
+        "placeholders": {
+            "repoUrl": {
+                "type": "String"
+            }
+        }
+    },
+    "textEmptyCategory": "Эта категория пуста.",
+    "time": "Время",
+    "titleStatusBarSettingsPage": "Выберите, что отображать в строке состояния",
+    "tvApplications": "ТВ-приложения",
+    "type": "Тип",
+    "typeInTheDateFormat": "Введите формат даты",
+    "typeInTheHourFormat": "Введите формат времени",
+    "uninstall": "Удалить",
+    "wallpaper": "Обои",
+    "withEllipsisAddTo": "Добавить в…",
+    "timeBasedWallpaper": "Обои по времени суток",
+    "pickDayWallpaper": "Выбрать дневные обои",
+    "pickNightWallpaper": "Выбрать ночные обои",
+    "accessibility": "Специальные возможности",
+    "defaultLauncherIsDefault": "LTvLauncher — лаунчер по умолчанию",
+    "defaultLauncherNotDefault": "LTvLauncher не является лаунчером по умолчанию",
+    "setAsDefaultLauncher": "Сделать лаунчером по умолчанию",
+    "defaultLauncherDescription": "Если выбран лаунчером по умолчанию, кнопка «Домой» всегда будет возвращать в LTvLauncher. Телевизор также будет загружаться сразу в LTvLauncher.",
+    "inputs": "Входы",
+    "inputSources": "Источники сигнала"
+}

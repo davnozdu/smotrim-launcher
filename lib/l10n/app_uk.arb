@@ -1,0 +1,117 @@
+{
+    "aboutFlauncher": "Про LTvLauncher",
+    "addCategory": "Додати категорію",
+    "addSection": "Додати розділ",
+    "alphabetical": "За абеткою",
+    "appCardHighlightAnimation": "Анімація виділення картки застосунку",
+    "appInfo": "Відомості про застосунок",
+    "appKeyClick": "Звук при натисканні клавіш",
+    "applications": "Застосунки",
+    "autoHideAppBar": "Автоматично приховувати рядок стану",
+    "backButtonAction": "Дія кнопки «Назад»",
+    "category": "Категорія",
+    "categories": "Категорії",
+    "columnCount": "Кількість стовпців",
+    "date": "Дата",
+    "dateAndTimeFormat": "Формат дати та часу",
+    "delete": "Видалити",
+    "dialogOptionBackButtonActionDoNothing": "Нічого не робити",
+    "dialogOptionBackButtonActionShowScreensaver": "Показати заставку",
+    "dialogOptionBackButtonActionShowClock": "Показати годинник",
+    "dialogTextNoFileExplorer": "Установіть файловий менеджер, щоб вибрати зображення.",
+    "dialogTitleBackButtonAction": "Виберіть дію кнопки «Назад»",
+    "disambiguateCategoryTitle": "{title} (Категорія)",
+    "@disambiguateCategoryTitle": {
+        "placeholders": {
+            "title": {
+                "type": "String"
+            }
+        }
+    },
+    "formattedDate": "Форматована дата: {dateString}",
+    "@formattedDate": {
+        "placeholders": {
+            "dateString": {
+                "type": "String"
+            }
+        }
+    },
+    "formattedTime": "Форматований час: {timeString}",
+    "@formattedTime": {
+        "placeholders": {
+            "timeString": {
+                "type": "String"
+            }
+        }
+    },
+    "gradient": "Градієнт",
+    "favoriteApps": "Улюблені застосунки",
+    "grid": "Сітка",
+    "height": "Висота",
+    "hide": "Приховати",
+    "hiddenApplications": "Приховані застосунки",
+    "launcherSections": "Розділи",
+    "layout": "Розташування",
+    "loading": "Завантаження",
+    "manual": "Вручну",
+    "modifySection": "Змінити розділ",
+    "mustNotBeEmpty": "Не має бути порожнім",
+    "name": "Назва",
+    "newSection": "Новий розділ",
+    "noDateFormatSpecified": "Формат дати не вказано",
+    "noTimeFormatSpecified": "Формат часу не вказано",
+    "nonTvApplications": "Не-ТБ застосунки",
+    "open": "Відкрити",
+    "orSelectFormatSpecifiers": "Або виберіть специфікатори формату",
+    "picture": "Зображення",
+    "removeFrom": "Прибрати з {name}",
+    "@removeFrom": {
+        "placeholders": {
+            "name": { "type": "String" }
+        }
+    },
+    "renameCategory": "Перейменувати категорію",
+    "reorder": "Змінити порядок",
+    "row": "Рядок",
+    "rowHeight": "Висота рядка",
+    "save": "Зберегти",
+    "spacer": "Роздільник",
+    "spacerMaxHeightRequirement": "Має бути більше 0 і не більше 500",
+    "statusBar": "Рядок стану",
+    "settings": "Налаштування",
+    "show": "Показати",
+    "showCategoryTitles": "Показувати назви категорій",
+    "themes": "Теми",
+    "hideHighlightOutlineOnHomescreen": "Приховати контур виділення на головному екрані",
+    "appSelectorTransitionAnimation": "Анімація переходу вибору застосунків",
+    "sort": "Сортування",
+    "systemSettings": "Системні налаштування",
+    "textAboutDialog": "LTvLauncher — це налаштовуваний лаунчер з відкритим кодом для Android TV, заснований на FLauncher.\n\nВихідний код доступний за адресою {repoUrl}.",
+    "@textAboutDialog": {
+        "placeholders": {
+            "repoUrl": {
+                "type": "String"
+            }
+        }
+    },
+    "textEmptyCategory": "Ця категорія порожня.",
+    "time": "Час",
+    "titleStatusBarSettingsPage": "Виберіть, що відображати в рядку стану",
+    "tvApplications": "ТБ-застосунки",
+    "type": "Тип",
+    "typeInTheDateFormat": "Введіть формат дати",
+    "typeInTheHourFormat": "Введіть формат часу",
+    "uninstall": "Видалити",
+    "wallpaper": "Шпалери",
+    "withEllipsisAddTo": "Додати до…",
+    "timeBasedWallpaper": "Шпалери за часом доби",
+    "pickDayWallpaper": "Вибрати денні шпалери",
+    "pickNightWallpaper": "Вибрати нічні шпалери",
+    "accessibility": "Спеціальні можливості",
+    "defaultLauncherIsDefault": "LTvLauncher — лаунчер за замовчуванням",
+    "defaultLauncherNotDefault": "LTvLauncher не є лаунчером за замовчуванням",
+    "setAsDefaultLauncher": "Зробити лаунчером за замовчуванням",
+    "defaultLauncherDescription": "Якщо вибрано лаунчером за замовчуванням, кнопка «Додому» завжди повертатиме до LTvLauncher. Телевізор також завантажуватиметься одразу в LTvLauncher.",
+    "inputs": "Входи",
+    "inputSources": "Джерела сигналу"
+}
