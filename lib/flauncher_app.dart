@@ -69,7 +69,7 @@ class FLauncherApp extends StatelessWidget
         GlobalWidgetsLocalizations.delegate
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      title: 'FLauncher',
+      title: 'Smotrim.CZ Launcher',
         theme: ThemeData(
           useMaterial3: true,
           brightness: Brightness.dark,

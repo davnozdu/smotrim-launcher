@@ -26,6 +26,8 @@ import 'package:flauncher/widgets/apps_grid.dart';
 import 'package:flauncher/widgets/category_row.dart';
 import 'package:flauncher/widgets/launcher_alternative_view.dart';
 import 'package:flauncher/widgets/focus_aware_app_bar.dart';
+import 'package:flauncher/widgets/smotrim_banner.dart';
+import 'package:flauncher/widgets/subscription_button.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flauncher/l10n/app_localizations.dart';
@@ -69,12 +71,27 @@ class _FLauncherState extends State<FLauncher> {
             child: Scaffold(
               backgroundColor: Colors.transparent,
               appBar: FocusAwareAppBar(key: _appBarKey),
+              bottomNavigationBar: const SmotrimBanner(),
               body: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Consumer<AppsService>(
                   builder: (context, appsService, _) {
                     if (appsService.initialized) {
-                      return SingleChildScrollView(child: _sections(appsService.launcherSections));
+                      return SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: SubscriptionButton(),
+                              ),
+                            ),
+                            _sections(appsService.launcherSections),
+                          ],
+                        ),
+                      );
                     }
                     else {
                       return _emptyState(context);

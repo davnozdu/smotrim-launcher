@@ -1,18 +1,14 @@
-# LTvLauncher
+# Smotrim.CZ Launcher
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/banner_dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset=".github/assets/banner_light.svg">
-  <img alt="LTvLauncher Banner" src=".github/assets/banner_light.svg">
-</picture>
+> **This project is a fork.**
+> **Smotrim.CZ Launcher** is a customized fork of [LtvLauncher](https://github.com/LeanBitLab/LtvLauncher) by [LeanBitLab](https://github.com/LeanBitLab), which itself is a fork of [FLauncher](https://github.com/osrosal/flauncher) (originally by [etienn01](https://gitlab.com/flauncher/flauncher)) — an open-source alternative launcher for Android TV. Licensed under GPLv3.
 
-[![Version](https://raw.githubusercontent.com/LeanBitLab/LtvLauncher/master/.github/badges/version.svg)](https://github.com/LeanBitLab/LtvLauncher/releases/latest) [![Downloads](https://raw.githubusercontent.com/LeanBitLab/LtvLauncher/master/.github/badges/downloads.svg)](https://github.com/LeanBitLab/LtvLauncher/releases) [![Stars](https://raw.githubusercontent.com/LeanBitLab/LtvLauncher/master/.github/badges/stars.svg)](https://github.com/LeanBitLab/LtvLauncher/stargazers) [![Tests](https://raw.githubusercontent.com/LeanBitLab/LtvLauncher/master/.github/badges/tests.svg)](https://github.com/LeanBitLab/LtvLauncher/actions/workflows/badges.yml) [![Coverage](https://raw.githubusercontent.com/LeanBitLab/LtvLauncher/master/.github/badges/coverage.svg)](https://github.com/LeanBitLab/LtvLauncher/actions/workflows/badges.yml)
+This build is branded for the **smotrim.cz** internet TV service. On top of the upstream launcher it adds:
 
-
-
-**LTvLauncher** is a fork of [FLauncher](https://github.com/osrosal/flauncher) (originally by [etienn01](https://gitlab.com/flauncher/flauncher)) - an open-source alternative launcher for Android TV.
-
-This customized version introduces usability enhancements and some UX improvements by [LeanBitLab](https://github.com/LeanBitLab).
+- **Russian and Ukrainian** localizations.
+- A bottom **info banner** (`smotrim.cz` + support phone).
+- A **"Renew subscription"** button on the home screen with payment instructions (Czech QR Platba).
+- Builds and signs the APK on **GitHub Actions** with a persistent key, so updates install over previous versions.
 
 <a href="https://github.com/LeanBitLab/LtvLauncher/releases/latest">
   <img alt="Get it on GitHub" src="https://raw.githubusercontent.com/rubenpgrady/get-it-on-github/refs/heads/main/get-it-on-github.png" height="50">

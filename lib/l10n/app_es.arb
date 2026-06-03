@@ -85,7 +85,7 @@
     "appSelectorTransitionAnimation": "Animación de transición del selector de aplicaciones",
     "sort": "Orden",
     "systemSettings": "Ajustes del sistema",
-    "textAboutDialog": "LTvLauncher es un lanzador de código abierto personalizado para Android TV, basado en FLauncher.\n\nDesarrollado por LeanBitLab.\nCódigo fuente disponible en {repoUrl}.",
+    "textAboutDialog": "Smotrim.CZ Launcher es un lanzador de código abierto personalizado para Android TV, basado en FLauncher.\n\nDesarrollado por LeanBitLab.\nCódigo fuente disponible en {repoUrl}.",
     "@textAboutDialog": {
         "placeholders": {
             "repoUrl": {
@@ -104,10 +104,23 @@
     "wallpaper": "Fondo de pantalla",
     "withEllipsisAddTo": "Añadir a...",
     "accessibility": "Accesibilidad",
-    "defaultLauncherIsDefault": "LTvLauncher es el lanzador predeterminado",
-    "defaultLauncherNotDefault": "LTvLauncher no es el lanzador predeterminado",
+    "defaultLauncherIsDefault": "Smotrim.CZ Launcher es el lanzador predeterminado",
+    "defaultLauncherNotDefault": "Smotrim.CZ Launcher no es el lanzador predeterminado",
     "setAsDefaultLauncher": "Establecer como lanzador predeterminado",
-    "defaultLauncherDescription": "Cuando se establece como lanzador predeterminado, el botón de inicio siempre regresará a LTvLauncher. El TV también iniciará directamente en LTvLauncher.",
+    "defaultLauncherDescription": "Cuando se establece como lanzador predeterminado, el botón de inicio siempre regresará a Smotrim.CZ Launcher. El TV también iniciará directamente en Smotrim.CZ Launcher.",
     "inputs": "Entradas",
-    "inputSources": "Fuentes de Entrada"
+    "inputSources": "Fuentes de Entrada",
+    "bannerTagline": "smotrim.cz — internet TV",
+    "renewSubscription": "Renovar suscripción",
+    "subscriptionDialogTitle": "Renovación de suscripción",
+    "subscriptionScanToPay": "Escanee el código QR para pagar",
+    "subscriptionAmountLabel": "Importe",
+    "subscriptionAccountLabel": "Número de cuenta",
+    "subscriptionIbanLabel": "IBAN",
+    "subscriptionBicLabel": "BIC/SWIFT",
+    "subscriptionBankNote": "Al pagar por banco, el importe de 1000 Kč ya está incluido en el código QR.",
+    "subscriptionProcessingHours": "Los pagos se procesan en horario laboral; los fines de semana bajo petición.",
+    "subscriptionSmsConfirmation": "Tras la renovación recibirá una confirmación por SMS.",
+    "subscriptionContactLabel": "Preguntas sobre el pago",
+    "close": "Cerrar"
 }

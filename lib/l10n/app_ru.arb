@@ -1,5 +1,5 @@
 {
-    "aboutFlauncher": "О LTvLauncher",
+    "aboutFlauncher": "О Smotrim.CZ Launcher",
     "addCategory": "Добавить категорию",
     "addSection": "Добавить раздел",
     "alphabetical": "По алфавиту",
@@ -86,7 +86,7 @@
     "appSelectorTransitionAnimation": "Анимация перехода выбора приложений",
     "sort": "Сортировка",
     "systemSettings": "Системные настройки",
-    "textAboutDialog": "LTvLauncher — это настраиваемый лаунчер с открытым исходным кодом для Android TV, основанный на FLauncher.\n\nИсходный код доступен по адресу {repoUrl}.",
+    "textAboutDialog": "Smotrim.CZ Launcher — это настраиваемый лаунчер с открытым исходным кодом для Android TV, основанный на FLauncher.\n\nИсходный код доступен по адресу {repoUrl}.",
     "@textAboutDialog": {
         "placeholders": {
             "repoUrl": {
@@ -108,10 +108,23 @@
     "pickDayWallpaper": "Выбрать дневные обои",
     "pickNightWallpaper": "Выбрать ночные обои",
     "accessibility": "Специальные возможности",
-    "defaultLauncherIsDefault": "LTvLauncher — лаунчер по умолчанию",
-    "defaultLauncherNotDefault": "LTvLauncher не является лаунчером по умолчанию",
+    "defaultLauncherIsDefault": "Smotrim.CZ Launcher — лаунчер по умолчанию",
+    "defaultLauncherNotDefault": "Smotrim.CZ Launcher не является лаунчером по умолчанию",
     "setAsDefaultLauncher": "Сделать лаунчером по умолчанию",
-    "defaultLauncherDescription": "Если выбран лаунчером по умолчанию, кнопка «Домой» всегда будет возвращать в LTvLauncher. Телевизор также будет загружаться сразу в LTvLauncher.",
+    "defaultLauncherDescription": "Если выбран лаунчером по умолчанию, кнопка «Домой» всегда будет возвращать в Smotrim.CZ Launcher. Телевизор также будет загружаться сразу в Smotrim.CZ Launcher.",
     "inputs": "Входы",
-    "inputSources": "Источники сигнала"
+    "inputSources": "Источники сигнала",
+    "bannerTagline": "smotrim.cz — интернет ТВ",
+    "renewSubscription": "Продлить подписку",
+    "subscriptionDialogTitle": "Продление подписки",
+    "subscriptionScanToPay": "Отсканируйте QR-код для оплаты",
+    "subscriptionAmountLabel": "Сумма",
+    "subscriptionAccountLabel": "Номер счёта",
+    "subscriptionIbanLabel": "IBAN",
+    "subscriptionBicLabel": "BIC/SWIFT",
+    "subscriptionBankNote": "При оплате через банк сумма 1000 Kč уже включена в QR-код.",
+    "subscriptionProcessingHours": "Платежи обрабатываются в рабочее время, в выходные — по запросу.",
+    "subscriptionSmsConfirmation": "После продления вы получите SMS-подтверждение.",
+    "subscriptionContactLabel": "Вопросы по оплате",
+    "close": "Закрыть"
 }

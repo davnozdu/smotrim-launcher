@@ -1,5 +1,5 @@
 {
-    "aboutFlauncher": "About LTvLauncher",
+    "aboutFlauncher": "About Smotrim.CZ Launcher",
     "addCategory": "Add category",
     "addSection": "Add section",
     "alphabetical": "Alphabetical",
@@ -86,7 +86,7 @@
     "appSelectorTransitionAnimation": "App selector transition animation",
     "sort": "Sort",
     "systemSettings": "System settings",
-    "textAboutDialog": "LTvLauncher is a customized open-source launcher for Android TV, based on FLauncher.\n\nDeveloped by LeanBitLab.\nSource code available at {repoUrl}.",
+    "textAboutDialog": "Smotrim.CZ Launcher is a customized open-source launcher for Android TV, based on FLauncher.\n\nDeveloped by LeanBitLab.\nSource code available at {repoUrl}.",
     "@textAboutDialog": {
         "placeholders": {
             "repoUrl": {
@@ -108,10 +108,23 @@
     "pickDayWallpaper": "Pick day wallpaper",
     "pickNightWallpaper": "Pick night wallpaper",
     "accessibility": "Accessibility",
-    "defaultLauncherIsDefault": "LTvLauncher is the default launcher",
-    "defaultLauncherNotDefault": "LTvLauncher is not the default launcher",
+    "defaultLauncherIsDefault": "Smotrim.CZ Launcher is the default launcher",
+    "defaultLauncherNotDefault": "Smotrim.CZ Launcher is not the default launcher",
     "setAsDefaultLauncher": "Set as default launcher",
-    "defaultLauncherDescription": "When set as the default launcher, the Home button will always return to LTvLauncher. The TV will also boot directly into LTvLauncher.",
+    "defaultLauncherDescription": "When set as the default launcher, the Home button will always return to Smotrim.CZ Launcher. The TV will also boot directly into Smotrim.CZ Launcher.",
     "inputs": "Inputs",
-    "inputSources": "Input Sources"
+    "inputSources": "Input Sources",
+    "bannerTagline": "smotrim.cz — internet TV",
+    "renewSubscription": "Renew subscription",
+    "subscriptionDialogTitle": "Subscription renewal",
+    "subscriptionScanToPay": "Scan the QR code to pay",
+    "subscriptionAmountLabel": "Amount",
+    "subscriptionAccountLabel": "Account number",
+    "subscriptionIbanLabel": "IBAN",
+    "subscriptionBicLabel": "BIC/SWIFT",
+    "subscriptionBankNote": "When paying via bank, the amount of 1000 Kč is already embedded in the QR code.",
+    "subscriptionProcessingHours": "Payments are processed during business hours; on weekends upon request.",
+    "subscriptionSmsConfirmation": "After renewal you will receive an SMS confirmation.",
+    "subscriptionContactLabel": "Payment questions",
+    "close": "Close"
 }
