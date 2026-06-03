@@ -78,28 +78,7 @@ class _FLauncherState extends State<FLauncher> {
                 child: Consumer<AppsService>(
                   builder: (context, appsService, _) {
                     if (appsService.initialized) {
-                      return SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Padding(
-                              padding: EdgeInsets.only(top: 8),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: UpdateBanner(),
-                              ),
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: SubscriptionButton(),
-                              ),
-                            ),
-                            _sections(appsService.launcherSections),
-                          ],
-                        ),
-                      );
+                      return SingleChildScrollView(child: _sections(appsService.launcherSections));
                     }
                     else {
                       return _emptyState(context);
@@ -115,7 +94,18 @@ class _FLauncherState extends State<FLauncher> {
   );
 
   Widget _sections(List<LauncherSection> sections) {
-    List<Widget> children = [];
+    // Header prompts shown above the categories. Wrapped in a left-aligned Row
+    // (not Align) so their height stays bounded inside the scroll view.
+    List<Widget> children = [
+      const Padding(
+        padding: EdgeInsets.only(top: 8),
+        child: Row(children: [UpdateBanner()]),
+      ),
+      const Padding(
+        padding: EdgeInsets.only(top: 8, bottom: 8),
+        child: Row(children: [SubscriptionButton()]),
+      ),
+    ];
     bool firstCategoryFound = false;
 
     for (var section in sections) {
