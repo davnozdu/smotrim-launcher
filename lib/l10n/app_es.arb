@@ -130,5 +130,10 @@
         }
     },
     "updateTapToInstall": "Pulse OK para actualizar",
-    "updateDownloading": "Descargando actualización…"
+    "updateDownloading": "Descargando actualización…",
+    "payByTransfer": "Transferencia bancaria",
+    "payByCard": "Pagar con tarjeta",
+    "back": "Atrás",
+    "subscriptionYourPhone": "Su número de teléfono",
+    "subscriptionCardPhoneNote": "Al pagar, indique su número de teléfono."
 }

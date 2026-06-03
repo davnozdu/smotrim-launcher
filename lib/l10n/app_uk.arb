@@ -134,5 +134,10 @@
         }
     },
     "updateTapToInstall": "Натисніть OK, щоб оновити",
-    "updateDownloading": "Завантаження оновлення…"
+    "updateDownloading": "Завантаження оновлення…",
+    "payByTransfer": "Переказати на рахунок",
+    "payByCard": "Сплатити карткою",
+    "back": "Назад",
+    "subscriptionYourPhone": "Ваш номер телефону",
+    "subscriptionCardPhoneNote": "Під час оплати вкажіть свій номер телефону."
 }

@@ -134,5 +134,10 @@
         }
     },
     "updateTapToInstall": "Press OK to update",
-    "updateDownloading": "Downloading update…"
+    "updateDownloading": "Downloading update…",
+    "payByTransfer": "Bank transfer",
+    "payByCard": "Pay by card",
+    "back": "Back",
+    "subscriptionYourPhone": "Your phone number",
+    "subscriptionCardPhoneNote": "When paying, include your phone number."
 }

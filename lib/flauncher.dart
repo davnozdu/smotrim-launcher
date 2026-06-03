@@ -94,16 +94,12 @@ class _FLauncherState extends State<FLauncher> {
   );
 
   Widget _sections(List<LauncherSection> sections) {
-    // Header prompts shown above the categories. Wrapped in a left-aligned Row
-    // (not Align) so their height stays bounded inside the scroll view.
+    // Update prompt above the categories (Row keeps its height bounded inside
+    // the scroll view; never use Align here).
     List<Widget> children = [
       const Padding(
         padding: EdgeInsets.only(top: 8),
         child: Row(children: [UpdateBanner()]),
-      ),
-      const Padding(
-        padding: EdgeInsets.only(top: 8, bottom: 8),
-        child: Row(children: [SubscriptionButton()]),
       ),
     ];
     bool firstCategoryFound = false;
@@ -147,6 +143,12 @@ class _FLauncherState extends State<FLauncher> {
           child: categoryWidget
       ));
     }
+
+    // "Renew subscription" goes at the very bottom, under all the apps.
+    children.add(const Padding(
+      padding: EdgeInsets.only(top: 16, bottom: 8),
+      child: Row(children: [SubscriptionButton()]),
+    ));
 
     return Column(children: children);
   }
