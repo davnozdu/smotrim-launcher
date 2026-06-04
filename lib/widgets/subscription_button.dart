@@ -29,7 +29,8 @@ class _Payment {
   /// type is set to instant (PT:IP).
   static String transferSpayd(String payerPhone) {
     final msg = payerPhone.replaceAll(RegExp(r'[*\s]'), '');
-    return "SPD*1.0*ACC:$iban+$bic*AM:1000.00*CC:CZK*PT:IP*MSG:$msg";
+    final msgPart = msg.isEmpty ? '' : '*MSG:$msg';
+    return "SPD*1.0*ACC:$iban+$bic*AM:1000.00*CC:CZK*PT:IP$msgPart";
   }
 }
 

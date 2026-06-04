@@ -42,8 +42,19 @@ class UpdateService extends ChangeNotifier {
 
   final SharedPreferences _sharedPreferences;
   final FLauncherChannel _channel;
+  Timer? _periodicTimer;
 
-  UpdateService(this._sharedPreferences, this._channel);
+  UpdateService(this._sharedPreferences, this._channel) {
+    // Re-check periodically so the daily check still happens on a TV that
+    // stays powered on for days without the launcher process restarting.
+    _periodicTimer = Timer.periodic(const Duration(hours: 6), (_) => maybeCheckForUpdate());
+  }
+
+  @override
+  void dispose() {
+    _periodicTimer?.cancel();
+    super.dispose();
+  }
 
   UpdateStatus _status = UpdateStatus.idle;
   UpdateStatus get status => _status;
@@ -125,7 +136,8 @@ class UpdateService extends ChangeNotifier {
       final request = await client.getUrl(Uri.parse(_apkUrl));
       final response = await request.close();
       if (response.statusCode != HttpStatus.ok) {
-        _setStatus(UpdateStatus.error);
+        // Keep the prompt so the user can retry instead of it vanishing.
+        _setStatus(UpdateStatus.available);
         return false;
       }
 
@@ -134,26 +146,32 @@ class UpdateService extends ChangeNotifier {
       final sink = file.openWrite();
       final total = response.contentLength;
       var received = 0;
+      var lastPercent = -1;
 
       await for (final chunk in response) {
         sink.add(chunk);
         received += chunk.length;
         if (total > 0) {
-          _downloadProgress = received / total;
-          notifyListeners();
+          // Only notify on whole-percent changes to avoid excessive rebuilds.
+          final percent = (received * 100 ~/ total);
+          if (percent != lastPercent) {
+            lastPercent = percent;
+            _downloadProgress = received / total;
+            notifyListeners();
+          }
         }
       }
       await sink.flush();
       await sink.close();
 
       final started = await _channel.installApk(file.path);
-      // The system installer takes over; reset back to "available" so the
-      // prompt remains if the user cancels the install.
-      _setStatus(started ? UpdateStatus.available : UpdateStatus.error);
+      // The system installer takes over; keep status "available" so the prompt
+      // remains if the user cancels (or the install couldn't be launched).
+      _setStatus(UpdateStatus.available);
       return started;
     } catch (e) {
       debugPrint("Update download failed: $e");
-      _setStatus(UpdateStatus.error);
+      _setStatus(UpdateStatus.available);
       return false;
     } finally {
       client.close();
