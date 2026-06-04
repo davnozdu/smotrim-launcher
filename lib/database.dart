@@ -97,7 +97,7 @@ class FLauncherDatabase extends _$FLauncherDatabase
   FLauncherDatabase.inMemory() : super(LazyDatabase(() => NativeDatabase.memory()));
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -149,6 +149,13 @@ class FLauncherDatabase extends _$FLauncherDatabase
           }
           if (from < 9 && to >= 9) {
             // Ensure the main apps category is shown as a grid (multiple rows).
+            await (update(categories)
+                  ..where((tbl) => tbl.name.isIn(const ["TV Apps", "Applications"])))
+                .write(const CategoriesCompanion(type: Value(CategoryType.grid)));
+          }
+          if (from < 10 && to >= 10) {
+            // Earlier builds never persisted the category type on insert, so the
+            // apps category was stored as a row even on fresh installs. Repair it.
             await (update(categories)
                   ..where((tbl) => tbl.name.isIn(const ["TV Apps", "Applications"])))
                 .write(const CategoriesCompanion(type: Value(CategoryType.grid)));
