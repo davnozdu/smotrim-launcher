@@ -1,4 +1,4 @@
-package com.leanbitlab.ltvL;
+package cz.smotrim.launcher;
 
 import android.app.Notification;
 import android.content.pm.PackageManager;

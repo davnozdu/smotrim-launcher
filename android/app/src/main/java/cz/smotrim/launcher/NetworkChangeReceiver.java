@@ -1,4 +1,4 @@
-package com.leanbitlab.ltvL;
+package cz.smotrim.launcher;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;

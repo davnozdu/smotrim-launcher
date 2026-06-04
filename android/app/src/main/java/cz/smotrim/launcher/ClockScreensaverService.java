@@ -1,4 +1,4 @@
-package com.leanbitlab.ltvL;
+package cz.smotrim.launcher;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;

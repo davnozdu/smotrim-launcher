@@ -1,4 +1,4 @@
-package com.leanbitlab.ltvL;
+package cz.smotrim.launcher;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
