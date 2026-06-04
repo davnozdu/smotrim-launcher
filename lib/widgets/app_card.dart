@@ -25,6 +25,7 @@ import 'package:flauncher/providers/settings_service.dart';
 import 'package:flauncher/widgets/application_info_panel.dart';
 import 'package:flauncher/widgets/focus_keyboard_listener.dart';
 import 'package:flauncher/providers/notifications_service.dart';
+import 'package:flauncher/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -510,16 +511,16 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
           );
         }
         else {
-          return const Padding(
-            padding: EdgeInsets.all(8),
+          return Padding(
+            padding: const EdgeInsets.all(8),
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 0, width: 16),
-                  Text("Loading")
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 0, width: 16),
+                  Text(AppLocalizations.of(context)!.loading)
                 ],
               ),
             ),

@@ -45,28 +45,28 @@ class ThemesPage extends StatelessWidget {
                 child: Column(
                   children: [
                     _ShapeRadioTile(
-                      title: 'Default',
+                      title: localizations.themeDefault,
                       value: 'modern',
                       groupValue: currentShape,
                       onChanged: (value) => settingsService.setThemes(value!),
                       autofocus: currentShape == 'modern',
                     ),
                     _ShapeRadioTile(
-                      title: 'Premium',
+                      title: localizations.themePremium,
                       value: 'premium',
                       groupValue: currentShape,
                       onChanged: (value) => settingsService.setThemes(value!),
                       autofocus: currentShape == 'premium',
                     ),
                     _ShapeRadioTile(
-                      title: 'Classic',
+                      title: localizations.themeClassic,
                       value: 'classic',
                       groupValue: currentShape,
                       onChanged: (value) => settingsService.setThemes(value!),
                       autofocus: currentShape == 'classic',
                     ),
                     _ShapeRadioTile(
-                      title: 'Capsule',
+                      title: localizations.themeCapsule,
                       value: 'capsule',
                       groupValue: currentShape,
                       onChanged: (value) => settingsService.setThemes(value!),

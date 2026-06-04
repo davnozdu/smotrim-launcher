@@ -40,7 +40,7 @@ class GeneralSettingsPage extends StatelessWidget {
 
     return Column(
       children: [
-        Text('System', style: Theme.of(context).textTheme.titleLarge),
+        Text(localizations.system, style: Theme.of(context).textTheme.titleLarge),
         const Divider(),
         Expanded(
           child: SingleChildScrollView(
@@ -49,17 +49,17 @@ class GeneralSettingsPage extends StatelessWidget {
                 FocusableSettingsTile(
                   autofocus: true,
                   leading: const Icon(Icons.brightness_6),
-                  title: Text('Brightness Scheduler', style: Theme.of(context).textTheme.bodyMedium),
+                  title: Text(localizations.brightnessScheduler, style: Theme.of(context).textTheme.bodyMedium),
                   onPressed: () => Navigator.of(context).pushNamed(BrightnessSettingsPage.routeName),
                 ),
                 FocusableSettingsTile(
                   leading: const Icon(Icons.screenshot_monitor),
-                  title: Text('Screensaver Settings', style: Theme.of(context).textTheme.bodyMedium),
+                  title: Text(localizations.screensaverSettings, style: Theme.of(context).textTheme.bodyMedium),
                   onPressed: () => _openScreensaverSettings(),
                 ),
                 FocusableSettingsTile(
                   leading: const Icon(Icons.watch_later_outlined),
-                  title: Text('Screensaver Clock Style', style: Theme.of(context).textTheme.bodyMedium),
+                  title: Text(localizations.screensaverClockStyle, style: Theme.of(context).textTheme.bodyMedium),
                   onPressed: () => Navigator.of(context).pushNamed(ScreensaverClockStylePage.routeName),
                 ),
                 FocusableSettingsTile(
@@ -74,7 +74,7 @@ class GeneralSettingsPage extends StatelessWidget {
                 ),
                 FocusableSettingsTile(
                   leading: const Icon(Icons.data_usage),
-                  title: Text('Data Usage Period', style: Theme.of(context).textTheme.bodyMedium),
+                  title: Text(localizations.dataUsagePeriod, style: Theme.of(context).textTheme.bodyMedium),
                   onPressed: () => Navigator.of(context).pushNamed(DataUsagePeriodPage.routeName),
                 ),
                 Consumer<NotificationsService>(
@@ -86,9 +86,9 @@ class GeneralSettingsPage extends StatelessWidget {
                           title: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Notification Access', style: Theme.of(context).textTheme.bodyMedium),
+                              Text(localizations.notificationAccess, style: Theme.of(context).textTheme.bodyMedium),
                               Text(
-                                service.hasPermission ? 'Granted' : 'Permission Required',
+                                service.hasPermission ? localizations.statusGranted : localizations.statusPermissionRequired,
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: service.hasPermission ? Colors.green : Colors.orange,
                                 ),
@@ -109,11 +109,11 @@ class GeneralSettingsPage extends StatelessWidget {
                             title: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text('System-wide Popup Alert', style: Theme.of(context).textTheme.bodyMedium),
+                                Text(localizations.systemWidePopupAlert, style: Theme.of(context).textTheme.bodyMedium),
                                 Text(
                                   !service.hasOverlayPermission
-                                      ? 'Overlay Permission Required'
-                                      : (service.systemPopupEnabled ? 'Enabled' : 'Disabled'),
+                                      ? localizations.statusOverlayPermissionRequired
+                                      : (service.systemPopupEnabled ? localizations.statusEnabled : localizations.statusDisabled),
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: !service.hasOverlayPermission
                                         ? Colors.orange

@@ -18,6 +18,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flauncher/l10n/app_localizations.dart';
 
 import '../../providers/brightness_service.dart';
 import '../rounded_switch_list_tile.dart';
@@ -33,10 +34,11 @@ class BrightnessSettingsPage extends StatelessWidget {
       builder: (context, brightnessService, _) {
         final isEnabled = brightnessService.isEnabled;
         final currentSlot = brightnessService.getCurrentTimeSlot();
-        
+        final l = AppLocalizations.of(context)!;
+
         return Column(
           children: [
-            Text('Brightness Scheduler', style: Theme.of(context).textTheme.titleLarge),
+            Text(l.brightnessScheduler, style: Theme.of(context).textTheme.titleLarge),
             const Divider(),
             Expanded(
               child: SingleChildScrollView(
@@ -59,7 +61,7 @@ class BrightnessSettingsPage extends StatelessWidget {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Permission Required',
+                                      l.statusPermissionRequired,
                                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                         color: Colors.orange,
                                         fontWeight: FontWeight.bold,
@@ -69,7 +71,7 @@ class BrightnessSettingsPage extends StatelessWidget {
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              const Text('To control brightness on this device, you must grant permission via ADB:'),
+                              Text(l.brightnessAdbInstruction),
                               const SizedBox(height: 8),
                               Container(
                                 padding: const EdgeInsets.all(8),
@@ -89,13 +91,13 @@ class BrightnessSettingsPage extends StatelessWidget {
                                   ElevatedButton.icon(
                                     onPressed: brightnessService.requestPermission,
                                     icon: const Icon(Icons.settings),
-                                    label: const Text('Grant Permission'),
+                                    label: Text(l.grantPermission),
                                   ),
                                   const SizedBox(height: 8),
                                   TextButton.icon(
                                     onPressed: brightnessService.checkPermission,
                                     icon: const Icon(Icons.refresh),
-                                    label: const Text('Check Status'),
+                                    label: Text(l.checkStatus),
                                   ),
                                 ],
                               ),

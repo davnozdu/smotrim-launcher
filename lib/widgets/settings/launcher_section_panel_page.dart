@@ -447,7 +447,7 @@ class _CategorySettingsState extends State<_CategorySettings>
         if (!sectionNamePresets.contains(_name) || _name.isEmpty)
           _listTile(
             context,
-            Text('Custom Name'),
+            Text(AppLocalizations.of(context)!.customName),
             Padding(
               padding: EdgeInsets.only(top: 4),
               child: TextFormField(
@@ -496,7 +496,7 @@ class _CategorySettingsState extends State<_CategorySettings>
                 ),
                 DropdownMenuItem(
                   value: CategorySort.lastUsed,
-                  child: Text('Last Used', style: Theme.of(context).textTheme.bodySmall),
+                  child: Text(AppLocalizations.of(context)!.lastUsed, style: Theme.of(context).textTheme.bodySmall),
                 )
               ]
             )

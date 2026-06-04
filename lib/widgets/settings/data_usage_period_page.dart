@@ -3,6 +3,7 @@ import 'package:flauncher/providers/settings_service.dart';
 import 'package:flauncher/widgets/settings/focusable_settings_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flauncher/l10n/app_localizations.dart';
 
 class DataUsagePeriodPage extends StatelessWidget {
   static const String routeName = "data_usage_period_panel";
@@ -13,16 +14,17 @@ class DataUsagePeriodPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<SettingsService>(
         builder: (context, service, _) {
+          final l = AppLocalizations.of(context)!;
           return Column(
             children: [
-              Text('Data Usage Period', style: Theme.of(context).textTheme.titleLarge),
+              Text(l.dataUsagePeriod, style: Theme.of(context).textTheme.titleLarge),
               const Divider(),
               Expanded(
                 child: ListView(
                   children: [
-                    _radioTile(context, service, 'Daily', DATA_USAGE_DAILY),
-                    _radioTile(context, service, 'Weekly', DATA_USAGE_WEEKLY),
-                    _radioTile(context, service, 'Monthly', DATA_USAGE_MONTHLY),
+                    _radioTile(context, service, l.dataUsageDaily, DATA_USAGE_DAILY),
+                    _radioTile(context, service, l.dataUsageWeekly, DATA_USAGE_WEEKLY),
+                    _radioTile(context, service, l.dataUsageMonthly, DATA_USAGE_MONTHLY),
                   ],
                 ),
               ),
