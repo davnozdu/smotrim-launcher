@@ -196,5 +196,8 @@
     "statusPermissionRequired": "Требуется разрешение",
     "statusEnabled": "Включено",
     "statusDisabled": "Выключено",
-    "statusOverlayPermissionRequired": "Требуется разрешение наложения"
+    "statusOverlayPermissionRequired": "Требуется разрешение наложения",
+    "categoryTvApps": "Приложения",
+    "categoryFavorites": "Избранное",
+    "categoryNonTvApps": "Другие приложения"
 }

@@ -24,6 +24,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flauncher/l10n/app_localizations.dart';
+import 'package:flauncher/widgets/category_container_common.dart';
 
 import '../../models/category.dart';
 
@@ -99,7 +100,7 @@ class _LauncherSectionsPanelPageState extends State<LauncherSectionsPanelPage> {
 
     String title = localizations.spacer;
     if (section is Category) {
-      title = section.name;
+      title = localizedCategoryName(context, section.name);
 
       if (title == localizations.spacer) {
         title = localizations.disambiguateCategoryTitle(title);

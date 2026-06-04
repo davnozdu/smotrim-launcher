@@ -5,6 +5,23 @@ import 'package:flauncher/l10n/app_localizations.dart';
 
 import 'ensure_visible.dart';
 
+/// Localizes the built-in default category names for display, while leaving
+/// user-renamed categories untouched (the stored name is also used as a sort
+/// key elsewhere, so only the displayed title is translated here).
+String localizedCategoryName(BuildContext context, String name) {
+  final l = AppLocalizations.of(context)!;
+  switch (name) {
+    case 'TV Apps':
+      return l.categoryTvApps;
+    case 'Favorites':
+      return l.categoryFavorites;
+    case 'Non-TV Apps':
+      return l.categoryNonTvApps;
+    default:
+      return name;
+  }
+}
+
 Widget categoryContainerEmptyState(BuildContext context) {
   AppLocalizations localizations = AppLocalizations.of(context)!;
 

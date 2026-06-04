@@ -192,5 +192,8 @@
     "statusPermissionRequired": "Permiso necesario",
     "statusEnabled": "Activado",
     "statusDisabled": "Desactivado",
-    "statusOverlayPermissionRequired": "Permiso de superposición necesario"
+    "statusOverlayPermissionRequired": "Permiso de superposición necesario",
+    "categoryTvApps": "Aplicaciones",
+    "categoryFavorites": "Favoritos",
+    "categoryNonTvApps": "Otras aplicaciones"
 }

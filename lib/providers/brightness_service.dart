@@ -83,9 +83,11 @@ class BrightnessService extends ChangeNotifier {
 
   BrightnessService(this._sharedPreferences) {
     checkPermission();
-    // Start the scheduler if enabled
+    // Start the scheduler if enabled, and apply the current slot's brightness
+    // right away instead of waiting up to a minute for the first timer tick.
     if (isEnabled) {
       _startScheduler();
+      applyCurrentSlotBrightness();
     }
   }
 

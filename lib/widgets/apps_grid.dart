@@ -87,7 +87,7 @@ class AppsGrid extends StatelessWidget
             if (showCategoriesTitle) {
               return Padding(
                 padding: const EdgeInsets.only(left: 16, bottom: 8),
-                child: Text(category.name,
+                child: Text(localizedCategoryName(context, category.name),
                   style: Theme.of(context)
                       .textTheme
                       .titleLarge!

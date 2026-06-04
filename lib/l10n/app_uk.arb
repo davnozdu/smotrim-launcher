@@ -196,5 +196,8 @@
     "statusPermissionRequired": "Потрібен дозвіл",
     "statusEnabled": "Увімкнено",
     "statusDisabled": "Вимкнено",
-    "statusOverlayPermissionRequired": "Потрібен дозвіл накладання"
+    "statusOverlayPermissionRequired": "Потрібен дозвіл накладання",
+    "categoryTvApps": "Застосунки",
+    "categoryFavorites": "Вибране",
+    "categoryNonTvApps": "Інші застосунки"
 }

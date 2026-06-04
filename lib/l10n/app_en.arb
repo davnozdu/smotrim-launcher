@@ -196,5 +196,8 @@
     "statusPermissionRequired": "Permission Required",
     "statusEnabled": "Enabled",
     "statusDisabled": "Disabled",
-    "statusOverlayPermissionRequired": "Overlay Permission Required"
+    "statusOverlayPermissionRequired": "Overlay Permission Required",
+    "categoryTvApps": "TV Apps",
+    "categoryFavorites": "Favorites",
+    "categoryNonTvApps": "Non-TV Apps"
 }

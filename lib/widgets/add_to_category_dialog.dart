@@ -6,6 +6,7 @@ import 'package:flauncher/l10n/app_localizations.dart';
 import '../models/app.dart';
 import '../models/category.dart';
 import 'package:flauncher/widgets/side_panel_dialog.dart';
+import 'package:flauncher/widgets/category_container_common.dart';
 
 class AddToCategoryDialog extends StatelessWidget {
   final App selectedApplication;
@@ -45,7 +46,7 @@ class AddToCategoryDialog extends StatelessWidget {
                             await context.read<AppsService>().addToCategory(selectedApplication, category);
                             Navigator.of(context).pop();
                           },
-                          title: Text(category.name),
+                          title: Text(localizedCategoryName(context, category.name)),
                         ),
                       );
                     },
