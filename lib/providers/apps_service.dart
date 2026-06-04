@@ -209,10 +209,15 @@ class AppsService extends ChangeNotifier {
         _applications.values.where((app) => !app.hidden).toList();
     final pool = Pool(10);
     for (var app in visibleApps) {
-      // Don't await, let it run in background with concurrency limit
-      pool.withResource(() => getAppIcon(app.packageName));
-      // Also cache banner if it's likely to be needed soon
-      pool.withResource(() => getAppBanner(app.packageName));
+      // Warm only what the card actually shows: the banner, or the icon only
+      // when there is no banner. Avoids fetching/decoding both for every app.
+      // Runs in the background with a concurrency limit (not awaited).
+      pool.withResource(() async {
+        final banner = await getAppBanner(app.packageName);
+        if (banner.isEmpty) {
+          await getAppIcon(app.packageName);
+        }
+      });
     }
   }
 
