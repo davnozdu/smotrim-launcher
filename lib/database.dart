@@ -97,7 +97,7 @@ class FLauncherDatabase extends _$FLauncherDatabase
   FLauncherDatabase.inMemory() : super(LazyDatabase(() => NativeDatabase.memory()));
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -146,6 +146,12 @@ class FLauncherDatabase extends _$FLauncherDatabase
           }
           if (from < 8 && from != 1 && to >= 8) {
             await migrator.addColumn(apps, apps.lastLaunchedAt);
+          }
+          if (from < 9 && to >= 9) {
+            // Ensure the main apps category is shown as a grid (multiple rows).
+            await (update(categories)
+                  ..where((tbl) => tbl.name.isIn(const ["TV Apps", "Applications"])))
+                .write(const CategoriesCompanion(type: Value(CategoryType.grid)));
           }
         },
         beforeOpen: (openingDetails) async {
