@@ -135,5 +135,6 @@
     "payByCard": "Pagar con tarjeta",
     "back": "Atrás",
     "subscriptionYourPhone": "Su número de teléfono",
-    "subscriptionCardPhoneNote": "Al pagar, indique su número de teléfono."
+    "subscriptionCardPhoneNote": "Al pagar, indique su número de teléfono.",
+    "subscriptionCardCommission": "Comisión: 100 Kč"
 }

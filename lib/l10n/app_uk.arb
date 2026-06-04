@@ -139,5 +139,6 @@
     "payByCard": "Сплатити карткою",
     "back": "Назад",
     "subscriptionYourPhone": "Ваш номер телефону",
-    "subscriptionCardPhoneNote": "Під час оплати вкажіть свій номер телефону."
+    "subscriptionCardPhoneNote": "Під час оплати вкажіть свій номер телефону.",
+    "subscriptionCardCommission": "Комісія: 100 Kč"
 }
