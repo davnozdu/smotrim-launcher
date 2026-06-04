@@ -691,8 +691,8 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
         setState(() => _moving = true);
       }
     } catch (e, stackTrace) {
-      print('Error showing panel: $e');
-      print('Stack trace: $stackTrace');
+      debugPrint('Error showing panel: $e');
+      debugPrint('Stack trace: $stackTrace');
     }
   }
 }

@@ -120,7 +120,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
       context: context,
       builder: (_) => _PhoneInputDialog(initial: _phone),
     );
-    if (result != null) setState(() => _phone = result.trim());
+    if (result != null && mounted) setState(() => _phone = result.trim());
   }
 
   @override

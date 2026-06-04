@@ -19,7 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../flauncher_channel.dart';
 
-enum UpdateStatus { idle, checking, available, downloading, error }
+enum UpdateStatus { idle, checking, available, downloading }
 
 /// Checks the GitHub releases of the project once per day and, when a newer
 /// build is published, lets the user install it from the home screen.
