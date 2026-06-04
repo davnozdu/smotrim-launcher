@@ -61,6 +61,9 @@ class _SubscriptionButtonState extends State<SubscriptionButton> {
         onFocusChange: (hasFocus) => setState(() => _focused = hasFocus),
         child: AnimatedScale(
           scale: _focused ? 1.04 : 1.0,
+          // Anchor the zoom to the left edge so the focused button grows to the
+          // right instead of spilling past the left screen margin.
+          alignment: Alignment.centerLeft,
           duration: const Duration(milliseconds: 150),
           curve: Curves.easeOut,
           child: Material(
