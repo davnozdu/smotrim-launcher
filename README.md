@@ -2,7 +2,7 @@
 
 **Smotrim.CZ Launcher** is a minimal, open-source launcher for Android TV, branded for the **smotrim.cz** internet TV service.
 
-<a href="https://github.com/davnozdu/LtvLauncher/releases/latest">
+<a href="https://github.com/davnozdu/smotrim-launcher/releases/latest">
   <img alt="Get it on GitHub" src="https://raw.githubusercontent.com/rubenpgrady/get-it-on-github/refs/heads/main/get-it-on-github.png" height="50">
 </a>
 

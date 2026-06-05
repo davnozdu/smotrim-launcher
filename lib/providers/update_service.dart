@@ -29,7 +29,7 @@ enum UpdateStatus { idle, checking, available, downloading }
 ///  - `smotrim-launcher.apk` -> the universal signed APK
 class UpdateService extends ChangeNotifier {
   static const String _owner = "davnozdu";
-  static const String _repo = "LtvLauncher";
+  static const String _repo = "smotrim-launcher";
   static const String _apkAsset = "smotrim-launcher.apk";
 
   static const String _latestJsonUrl =

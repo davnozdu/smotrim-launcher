@@ -43,7 +43,7 @@ class LTvLauncherAboutDialog extends StatelessWidget {
           "Fork of LtvLauncher by LeanBitLab\nBased on FLauncher © 2021 Étienne Fesser",
       children: [
         SizedBox(height: 24),
-        Text(localizations.textAboutDialog("https://github.com/davnozdu/LtvLauncher"))
+        Text(localizations.textAboutDialog("https://github.com/davnozdu/smotrim-launcher"))
       ],
     );
   }
