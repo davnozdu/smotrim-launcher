@@ -48,6 +48,7 @@
         <intent>
             <action android:name="android.intent.action.GET_CONTENT" />
         </intent>
+        <package android:name="cz.smotrim.player" />
     </queries>
 
     <application

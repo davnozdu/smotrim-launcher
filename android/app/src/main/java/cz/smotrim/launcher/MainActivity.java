@@ -93,6 +93,7 @@ public class MainActivity extends FlutterActivity {
                 case "openAppInfo" -> result.success(openAppInfo(call.arguments()));
                 case "uninstallApp" -> result.success(uninstallApp(call.arguments()));
                 case "installApk" -> result.success(installApk(call.arguments()));
+                case "isAppInstalled" -> result.success(isAppInstalled(call.arguments()));
                 case "isDefaultLauncher" -> result.success(isDefaultLauncher());
                 case "checkForGetContentAvailability" -> result.success(checkForGetContentAvailability());
                 case "startAmbientMode" -> result.success(startAmbientMode());
@@ -402,6 +403,15 @@ public class MainActivity extends FlutterActivity {
                 .setData(Uri.fromParts("package", packageName, null));
 
         return tryStartActivity(intent);
+    }
+
+    private boolean isAppInstalled(String packageName) {
+        try {
+            getPackageManager().getPackageInfo(packageName, 0);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private boolean installApk(String filePath) {

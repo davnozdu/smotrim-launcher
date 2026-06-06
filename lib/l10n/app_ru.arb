@@ -199,5 +199,8 @@
     "statusOverlayPermissionRequired": "Требуется разрешение наложения",
     "categoryTvApps": "Приложения",
     "categoryFavorites": "Избранное",
-    "categoryNonTvApps": "Другие приложения"
+    "categoryNonTvApps": "Другие приложения",
+    "installPlayer": "Установить Smotrim Плеер",
+    "updatePlayer": "Обновить Smotrim Плеер",
+    "playerDownloading": "Загрузка плеера…"
 }

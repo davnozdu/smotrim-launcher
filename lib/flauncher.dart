@@ -28,6 +28,7 @@ import 'package:flauncher/widgets/launcher_alternative_view.dart';
 import 'package:flauncher/widgets/focus_aware_app_bar.dart';
 import 'package:flauncher/widgets/smotrim_banner.dart';
 import 'package:flauncher/widgets/subscription_button.dart';
+import 'package:flauncher/widgets/player_install_button.dart';
 import 'package:flauncher/widgets/update_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -144,10 +145,18 @@ class _FLauncherState extends State<FLauncher> {
       ));
     }
 
-    // "Renew subscription" goes at the very bottom, under all the apps.
+    // "Renew subscription" + "Install/Update player" at the very bottom, under
+    // all the apps, side by side with a small gap (wraps on narrow screens).
     children.add(const Padding(
       padding: EdgeInsets.only(top: 16, bottom: 8),
-      child: Row(children: [SubscriptionButton()]),
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 12,
+        children: [
+          SubscriptionButton(),
+          PlayerInstallButton(),
+        ],
+      ),
     ));
 
     return Column(children: children);

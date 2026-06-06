@@ -199,5 +199,8 @@
     "statusOverlayPermissionRequired": "Overlay Permission Required",
     "categoryTvApps": "TV Apps",
     "categoryFavorites": "Favorites",
-    "categoryNonTvApps": "Non-TV Apps"
+    "categoryNonTvApps": "Non-TV Apps",
+    "installPlayer": "Install Smotrim Player",
+    "updatePlayer": "Update Smotrim Player",
+    "playerDownloading": "Downloading player…"
 }
