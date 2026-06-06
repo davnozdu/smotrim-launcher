@@ -202,5 +202,9 @@
     "categoryNonTvApps": "Другие приложения",
     "installPlayer": "Установить Smotrim Плеер",
     "updatePlayer": "Обновить Smotrim Плеер",
-    "playerDownloading": "Загрузка плеера…"
+    "playerDownloading": "Загрузка плеера…",
+    "checkForUpdates": "Проверить обновление",
+    "checkingForUpdates": "Проверка обновлений…",
+    "alreadyUpToDate": "У вас последняя версия",
+    "install": "Установить"
 }

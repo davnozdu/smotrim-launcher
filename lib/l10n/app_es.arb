@@ -198,5 +198,9 @@
     "categoryNonTvApps": "Otras aplicaciones",
     "installPlayer": "Instalar Smotrim Player",
     "updatePlayer": "Actualizar Smotrim Player",
-    "playerDownloading": "Descargando reproductor…"
+    "playerDownloading": "Descargando reproductor…",
+    "checkForUpdates": "Buscar actualizaciones",
+    "checkingForUpdates": "Buscando actualizaciones…",
+    "alreadyUpToDate": "Tiene la última versión",
+    "install": "Instalar"
 }

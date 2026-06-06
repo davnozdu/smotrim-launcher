@@ -27,6 +27,7 @@ import 'date_time_format_page.dart';
 import 'back_button_action_page.dart';
 import 'data_usage_period_page.dart';
 import 'screensaver_clock_style_page.dart';
+import 'launcher_update_dialog.dart';
 
 
 class GeneralSettingsPage extends StatelessWidget {
@@ -48,6 +49,14 @@ class GeneralSettingsPage extends StatelessWidget {
               children: [
                 FocusableSettingsTile(
                   autofocus: true,
+                  leading: const Icon(Icons.system_update),
+                  title: Text(localizations.checkForUpdates, style: Theme.of(context).textTheme.bodyMedium),
+                  onPressed: () => showDialog(
+                    context: context,
+                    builder: (_) => const LauncherUpdateDialog(),
+                  ),
+                ),
+                FocusableSettingsTile(
                   leading: const Icon(Icons.brightness_6),
                   title: Text(localizations.brightnessScheduler, style: Theme.of(context).textTheme.bodyMedium),
                   onPressed: () => Navigator.of(context).pushNamed(BrightnessSettingsPage.routeName),
