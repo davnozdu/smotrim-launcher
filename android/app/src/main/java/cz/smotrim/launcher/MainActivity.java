@@ -70,10 +70,10 @@ import android.service.notification.StatusBarNotification;
 import android.content.ComponentName;
 
 public class MainActivity extends FlutterActivity {
-    private final String METHOD_CHANNEL = "me.efesser.flauncher/method";
-    private final String APPS_EVENT_CHANNEL = "me.efesser.flauncher/event_apps";
-    private final String NETWORK_EVENT_CHANNEL = "me.efesser.flauncher/event_network";
-    private final String NOTIFICATIONS_EVENT_CHANNEL = "me.efesser.flauncher/event_notifications";
+    private final String METHOD_CHANNEL = "cz.smotrim.launcher/method";
+    private final String APPS_EVENT_CHANNEL = "cz.smotrim.launcher/event_apps";
+    private final String NETWORK_EVENT_CHANNEL = "cz.smotrim.launcher/event_network";
+    private final String NOTIFICATIONS_EVENT_CHANNEL = "cz.smotrim.launcher/event_notifications";
 
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {

@@ -73,7 +73,7 @@ extension TimeSlotExtension on TimeSlot {
 }
 
 class BrightnessService extends ChangeNotifier {
-  static const _platform = MethodChannel('me.efesser.flauncher/method');
+  static const _platform = MethodChannel('cz.smotrim.launcher/method');
   final SharedPreferences _sharedPreferences;
   Timer? _timer;
   TimeSlot? _lastAppliedSlot;

@@ -21,10 +21,10 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 class FLauncherChannel {
-  static const _methodChannel = MethodChannel('me.efesser.flauncher/method');
-  static const _appsEventChannel = EventChannel('me.efesser.flauncher/event_apps');
-  static const _networkEventChannel = EventChannel('me.efesser.flauncher/event_network');
-  static const _notificationsEventChannel = EventChannel('me.efesser.flauncher/event_notifications');
+  static const _methodChannel = MethodChannel('cz.smotrim.launcher/method');
+  static const _appsEventChannel = EventChannel('cz.smotrim.launcher/event_apps');
+  static const _networkEventChannel = EventChannel('cz.smotrim.launcher/event_network');
+  static const _notificationsEventChannel = EventChannel('cz.smotrim.launcher/event_notifications');
 
   Future<List<Map<dynamic, dynamic>>> getApplications() async {
     List<Map<dynamic, dynamic>>? applications = await _methodChannel.invokeListMethod("getApplications");

@@ -39,8 +39,7 @@ class LTvLauncherAboutDialog extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Image.asset("assets/icon.png", height: 72),
       ),
-      applicationLegalese:
-          "Fork of LtvLauncher by LeanBitLab\nBased on FLauncher © 2021 Étienne Fesser",
+      applicationLegalese: "© Smotrim.CZ — GPLv3",
       children: [
         SizedBox(height: 24),
         Text(localizations.textAboutDialog("https://github.com/davnozdu/smotrim-launcher"))

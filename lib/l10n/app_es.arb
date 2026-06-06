@@ -1,5 +1,5 @@
 {
-    "aboutFlauncher": "Acerca de FLauncher",
+    "aboutFlauncher": "Acerca de Smotrim.CZ Launcher",
     "addCategory": "Agregar categoría",
     "addSection": "Agregar sección",
     "alphabetical": "Alfabético",
@@ -85,7 +85,7 @@
     "appSelectorTransitionAnimation": "Animación de transición del selector de aplicaciones",
     "sort": "Orden",
     "systemSettings": "Ajustes del sistema",
-    "textAboutDialog": "Smotrim.CZ Launcher es un lanzador de código abierto personalizado para Android TV, basado en FLauncher.\n\nDesarrollado por LeanBitLab.\nCódigo fuente disponible en {repoUrl}.",
+    "textAboutDialog": "Smotrim.CZ Launcher es un lanzador de código abierto personalizado para Android TV.\n\nCódigo fuente disponible en {repoUrl}.",
     "@textAboutDialog": {
         "placeholders": {
             "repoUrl": {

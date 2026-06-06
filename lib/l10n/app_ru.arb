@@ -86,7 +86,7 @@
     "appSelectorTransitionAnimation": "Анимация перехода выбора приложений",
     "sort": "Сортировка",
     "systemSettings": "Системные настройки",
-    "textAboutDialog": "Smotrim.CZ Launcher — это настраиваемый лаунчер с открытым исходным кодом для Android TV, основанный на FLauncher.\n\nИсходный код доступен по адресу {repoUrl}.",
+    "textAboutDialog": "Smotrim.CZ Launcher — настраиваемый лаунчер с открытым исходным кодом для Android TV.\n\nИсходный код доступен по адресу {repoUrl}.",
     "@textAboutDialog": {
         "placeholders": {
             "repoUrl": {

@@ -86,7 +86,7 @@
     "appSelectorTransitionAnimation": "App selector transition animation",
     "sort": "Sort",
     "systemSettings": "System settings",
-    "textAboutDialog": "Smotrim.CZ Launcher is a customized open-source launcher for Android TV, based on FLauncher.\n\nDeveloped by LeanBitLab.\nSource code available at {repoUrl}.",
+    "textAboutDialog": "Smotrim.CZ Launcher is a customized open-source launcher for Android TV.\n\nSource code available at {repoUrl}.",
     "@textAboutDialog": {
         "placeholders": {
             "repoUrl": {

@@ -153,7 +153,7 @@ class GeneralSettingsPage extends StatelessWidget {
   }
 
   Future<void> _openScreensaverSettings() async {
-    const platform = MethodChannel('me.efesser.flauncher/method');
+    const platform = MethodChannel('cz.smotrim.launcher/method');
     platform.invokeMethod('openScreensaverSettings');
   }
 }
