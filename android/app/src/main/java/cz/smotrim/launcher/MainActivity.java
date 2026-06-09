@@ -387,6 +387,55 @@ public class MainActivity extends FlutterActivity {
         return tryStartActivity(intent);
     }
 
+    private static final String PLAYER_PACKAGE = "cz.smotrim.player";
+    private boolean playerAutostartChecked = false;
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        maybeAutostartPlayer();
+    }
+
+    // The player can't self-start from its boot receiver on Android 12+/14
+    // (background-activity-launch is blocked). This launcher IS the home app and
+    // is allow-listed to start activities, so on boot we launch the player when
+    // its "autostart on boot" setting is enabled.
+    private void maybeAutostartPlayer() {
+        if (playerAutostartChecked) return;
+        playerAutostartChecked = true;
+        // Only right after a real boot — so returning to HOME later (or the
+        // launcher being recreated) doesn't keep re-launching the player.
+        if (android.os.SystemClock.elapsedRealtime() > 120000) return;
+        if (!isPlayerAutostartEnabled()) return;
+        try {
+            PackageManager pm = getPackageManager();
+            Intent intent = pm.getLeanbackLaunchIntentForPackage(PLAYER_PACKAGE);
+            if (intent == null) intent = pm.getLaunchIntentForPackage(PLAYER_PACKAGE);
+            if (intent != null) {
+                intent.putExtra("autostart", true);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private boolean isPlayerAutostartEnabled() {
+        android.database.Cursor cursor = null;
+        try {
+            cursor = getContentResolver().query(
+                    Uri.parse("content://cz.smotrim.player.autostart/state"),
+                    null, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                return cursor.getInt(0) == 1;
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+        return false;
+    }
+
     private boolean openSettings() {
         return launchActivityFromAction(Settings.ACTION_SETTINGS);
     }
