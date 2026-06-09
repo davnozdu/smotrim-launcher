@@ -42,6 +42,11 @@ class AppsService extends ChangeNotifier {
   Map<String, App> _applications = Map();
   Map<String, Uint8List> _iconCache = Map();
   Map<String, Uint8List> _bannerCache = Map();
+  // Bumped when an app's custom banner changes, so only the affected card
+  // reloads its image (instead of every card on every notifyListeners()).
+  final Map<String, int> _bannerVersions = {};
+
+  int bannerVersion(String packageName) => _bannerVersions[packageName] ?? 0;
 
   Map<int, Category> _categoriesById = Map();
   Map<String, Category>? _categoriesByNameCache;
@@ -434,6 +439,7 @@ class AppsService extends ChangeNotifier {
     final prefs = await _prefsAsync;
     await prefs.setString('custom_banner_$packageName', imagePath);
     _bannerCache.remove(packageName);
+    _bannerVersions[packageName] = bannerVersion(packageName) + 1;
     notifyListeners();
   }
 
@@ -449,6 +455,7 @@ class AppsService extends ChangeNotifier {
     }
     await prefs.remove('custom_banner_$packageName');
     _bannerCache.remove(packageName);
+    _bannerVersions[packageName] = bannerVersion(packageName) + 1;
     notifyListeners();
   }
 

@@ -38,6 +38,9 @@ import 'flauncher_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Keep the decoded-image cache small — TV boxes are low on RAM and the home
+  // only shows a bounded set of app banners/icons (already downscaled).
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 40 << 20; // 40 MB
   initializeDateFormatting();
 
   final sharedPreferences = await SharedPreferences.getInstance();

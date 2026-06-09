@@ -66,6 +66,7 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
   bool _moving = false;
   bool _clicked = false;
   late FocusNode _focusNode;
+  int _seenBannerVersion = 0;
 
   late Future<(AppImageType, ImageProvider)> _appImageLoadFuture;
   late final AnimationController _animation = AnimationController(
@@ -97,6 +98,7 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
 
     FocusManager.instance.addHighlightModeListener(_focusHighlightModeChanged);
     _appImageLoadFuture = _loadAppBannerOrIcon(_appsService!);
+    _seenBannerVersion = _appsService!.bannerVersion(widget.application.packageName);
 
     // Check if we need to restore focus/reorder mode after a move
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -148,8 +150,12 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
   }
 
   void _onAppsServiceChanged() {
-    // Reload the app image when the AppsService notifies of changes
-    // (e.g., after setting a custom banner)
+    // Only reload the image when THIS app's custom banner actually changed,
+    // instead of on every notify (e.g. launching an app updates lastLaunchedAt
+    // and would otherwise reload every card's image needlessly).
+    final version = _appsService!.bannerVersion(widget.application.packageName);
+    if (version == _seenBannerVersion) return;
+    _seenBannerVersion = version;
     setState(() {
       _appImageLoadFuture = _loadAppBannerOrIcon(_appsService!);
     });
