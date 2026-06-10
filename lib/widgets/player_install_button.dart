@@ -17,59 +17,28 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flauncher/flauncher_channel.dart';
 import 'package:flauncher/l10n/app_localizations.dart';
 
-/// A bottom-of-home button that installs or updates a companion app from its
-/// GitHub `latest` release.
+/// Installs or updates the companion Smotrim Player from its GitHub releases.
 ///
-/// On press it first checks what's installed against the latest release tag:
-///   * not installed        → downloads and installs;
-///   * newer version exists → downloads and updates (data preserved, same sig);
-///   * already up to date   → shows a brief "you have the latest version"
-///                            message and downloads nothing.
-///
-/// The "available version" is the release `tag_name` (e.g. `v2.0.10`), which
-/// matches both companion apps' `versionName`. The installed version comes from
-/// the package manager via [FLauncherChannel.getAppVersion].
-class CompanionAppButton extends StatefulWidget {
-  /// Package id, e.g. `cz.smotrim.player`.
-  final String packageName;
-
-  /// GitHub repo as `owner/name`, e.g. `davnozdu/smotrim-player`.
-  final String repo;
-
-  /// Exact asset name to prefer (e.g. the universal `app-release.apk`). When
-  /// null, or when no asset matches, the first `.apk` asset is used.
-  final String? preferredAsset;
-
-  /// Temp file name used while downloading.
-  final String tempFileName;
-
-  /// Label selectors, resolved against the current locale in [build].
-  final String Function(AppLocalizations) installLabel;
-  final String Function(AppLocalizations) updateLabel;
-  final String Function(AppLocalizations) downloadingLabel;
-  final String Function(AppLocalizations) checkingLabel;
-  final String Function(AppLocalizations) upToDateLabel;
-
-  const CompanionAppButton({
-    super.key,
-    required this.packageName,
-    required this.repo,
-    required this.tempFileName,
-    required this.installLabel,
-    required this.updateLabel,
-    required this.downloadingLabel,
-    required this.checkingLabel,
-    required this.upToDateLabel,
-    this.preferredAsset,
-  });
+/// On press it first compares the installed versionName against the latest
+/// release tag: if it's already up to date it shows a brief message and
+/// downloads nothing; otherwise it pulls the universal `app-release.apk` from
+/// the `latest` release and installs/updates in place (data preserved, same
+/// signature).
+class PlayerInstallButton extends StatefulWidget {
+  const PlayerInstallButton({super.key});
 
   @override
-  State<CompanionAppButton> createState() => _CompanionAppButtonState();
+  State<PlayerInstallButton> createState() => _PlayerInstallButtonState();
 }
 
 enum _Phase { idle, checking, downloading }
 
-class _CompanionAppButtonState extends State<CompanionAppButton> {
+class _PlayerInstallButtonState extends State<PlayerInstallButton> {
+  static const String _playerPackage = "cz.smotrim.player";
+  static const String _latestApiUrl =
+      "https://api.github.com/repos/davnozdu/smotrim-player/releases/latest";
+  static const String _preferredAsset = "app-release.apk";
+
   final FLauncherChannel _channel = FLauncherChannel();
   bool _focused = false;
   bool _installed = false;
@@ -84,43 +53,98 @@ class _CompanionAppButtonState extends State<CompanionAppButton> {
 
   Future<void> _refreshInstalled() async {
     try {
-      final installed = await _channel.isAppInstalled(widget.packageName);
+      final installed = await _channel.isAppInstalled(_playerPackage);
       if (mounted) setState(() => _installed = installed);
     } catch (_) {}
   }
 
   /// Fetches the latest release: returns (tagName, apkDownloadUrl).
   Future<(String, String)?> _fetchLatest(HttpClient client) async {
-    final url = "https://api.github.com/repos/${widget.repo}/releases/latest";
-    final request = await client.getUrl(Uri.parse(url));
+    final request = await client.getUrl(Uri.parse(_latestApiUrl));
     request.headers.set(HttpHeaders.userAgentHeader, "SmotrimLauncher");
     request.headers.set(HttpHeaders.acceptHeader, "application/vnd.github+json");
     final response = await request.close();
     if (response.statusCode != HttpStatus.ok) return null;
 
     final json = jsonDecode(await response.transform(utf8.decoder).join()) as Map<String, dynamic>;
-    final tag = (json["tagName"] as String?) ?? (json["tag_name"] as String?);
+    final tag = json["tag_name"] as String?;
     final assets = (json["assets"] as List?) ?? const [];
 
     String? apkUrl;
-    if (widget.preferredAsset != null) {
-      for (final a in assets) {
-        if ((a["name"] as String?) == widget.preferredAsset) {
-          apkUrl = a["browser_download_url"] as String?;
-          break;
-        }
+    for (final a in assets) {
+      if ((a["name"] as String?) == _preferredAsset) {
+        apkUrl = a["browser_download_url"] as String?;
+        break;
       }
     }
-    apkUrl ??= () {
-      for (final a in assets) {
-        final name = (a["name"] as String?) ?? "";
-        if (name.toLowerCase().endsWith(".apk")) return a["browser_download_url"] as String?;
-      }
-      return null;
-    }();
-
     if (tag == null || apkUrl == null) return null;
     return (tag, apkUrl);
+  }
+
+  Future<void> _onPressed() async {
+    if (_phase != _Phase.idle) return;
+    setState(() => _phase = _Phase.checking);
+
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
+    try {
+      final latest = await _fetchLatest(client);
+      if (latest == null) {
+        debugPrint("Player: failed to resolve latest release");
+        return;
+      }
+      final (tag, apkUrl) = latest;
+
+      final installedVersion = await _channel.getAppVersion(_playerPackage);
+      if (installedVersion != null && _compareVersions(tag, installedVersion) <= 0) {
+        if (mounted) {
+          setState(() => _phase = _Phase.idle);
+          final l = AppLocalizations.of(context)!;
+          _showSnack("${l.alreadyUpToDate} ($installedVersion)");
+        }
+        return;
+      }
+
+      if (mounted) setState(() { _phase = _Phase.downloading; _progress = 0; });
+
+      final request = await client.getUrl(Uri.parse(apkUrl));
+      final response = await request.close();
+      if (response.statusCode != HttpStatus.ok) return;
+
+      final dir = await getTemporaryDirectory();
+      final file = File("${dir.path}/smotrim-player.apk");
+      final sink = file.openWrite();
+      final total = response.contentLength;
+      var received = 0;
+      var lastPercent = -1;
+
+      await for (final chunk in response) {
+        sink.add(chunk);
+        received += chunk.length;
+        if (total > 0) {
+          final percent = received * 100 ~/ total;
+          if (percent != lastPercent) {
+            lastPercent = percent;
+            if (mounted) setState(() => _progress = received / total);
+          }
+        }
+      }
+      await sink.flush();
+      await sink.close();
+
+      await _channel.installApk(file.path);
+    } catch (e) {
+      debugPrint("Player install failed: $e");
+    } finally {
+      client.close();
+      if (mounted) setState(() => _phase = _Phase.idle);
+      _refreshInstalled();
+    }
+  }
+
+  void _showSnack(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.maybeOf(context)
+        ?.showSnackBar(SnackBar(content: Text(text), duration: const Duration(seconds: 3)));
   }
 
   /// Numeric, component-wise version compare. Returns >0 if [a] is newer.
@@ -141,80 +165,6 @@ class _CompanionAppButtonState extends State<CompanionAppButton> {
     return m.group(0)!.split('.').map(int.parse).toList();
   }
 
-  void _showSnack(String text) {
-    if (!mounted) return;
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    messenger?.showSnackBar(SnackBar(content: Text(text), duration: const Duration(seconds: 3)));
-  }
-
-  Future<void> _onPressed() async {
-    if (_phase != _Phase.idle) return;
-    setState(() => _phase = _Phase.checking);
-
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
-    try {
-      final latest = await _fetchLatest(client);
-      if (latest == null) {
-        debugPrint("${widget.repo}: failed to resolve latest release");
-        return;
-      }
-      final (tag, apkUrl) = latest;
-
-      final installedVersion = await _channel.getAppVersion(widget.packageName);
-      // Already installed and not older than the latest release → nothing to do.
-      if (installedVersion != null && _compareVersions(tag, installedVersion) <= 0) {
-        if (mounted) setState(() => _phase = _Phase.idle);
-        if (mounted) {
-          final l = AppLocalizations.of(context)!;
-          _showSnack("${widget.upToDateLabel(l)} ($installedVersion)");
-        }
-        return;
-      }
-
-      if (mounted) {
-        setState(() {
-          _phase = _Phase.downloading;
-          _progress = 0;
-        });
-      }
-
-      final request = await client.getUrl(Uri.parse(apkUrl));
-      final response = await request.close();
-      if (response.statusCode != HttpStatus.ok) return;
-
-      final dir = await getTemporaryDirectory();
-      final file = File("${dir.path}/${widget.tempFileName}");
-      final sink = file.openWrite();
-      final total = response.contentLength;
-      var received = 0;
-      var lastPercent = -1;
-
-      await for (final chunk in response) {
-        sink.add(chunk);
-        received += chunk.length;
-        if (total > 0) {
-          final percent = received * 100 ~/ total;
-          if (percent != lastPercent) {
-            lastPercent = percent;
-            if (mounted) setState(() => _progress = received / total);
-          }
-        }
-      }
-      await sink.flush();
-      await sink.close();
-
-      // The system installer takes over (installs new or updates in place,
-      // preserving data for the same package + signature).
-      await _channel.installApk(file.path);
-    } catch (e) {
-      debugPrint("${widget.repo} install failed: $e");
-    } finally {
-      client.close();
-      if (mounted) setState(() => _phase = _Phase.idle);
-      _refreshInstalled();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -224,15 +174,15 @@ class _CompanionAppButtonState extends State<CompanionAppButton> {
     final IconData icon;
     switch (_phase) {
       case _Phase.checking:
-        label = widget.checkingLabel(l);
+        label = l.checkingForUpdates;
         icon = Icons.search;
         break;
       case _Phase.downloading:
-        label = "${widget.downloadingLabel(l)} ${(_progress * 100).clamp(0, 100).toStringAsFixed(0)}%";
+        label = "${l.playerDownloading} ${(_progress * 100).clamp(0, 100).toStringAsFixed(0)}%";
         icon = Icons.download;
         break;
       case _Phase.idle:
-        label = _installed ? widget.updateLabel(l) : widget.installLabel(l);
+        label = _installed ? l.updatePlayer : l.installPlayer;
         icon = _installed ? Icons.system_update : Icons.download;
         break;
     }
