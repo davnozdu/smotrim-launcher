@@ -29,6 +29,7 @@ import 'package:flauncher/widgets/focus_aware_app_bar.dart';
 import 'package:flauncher/widgets/smotrim_banner.dart';
 import 'package:flauncher/widgets/subscription_button.dart';
 import 'package:flauncher/widgets/player_install_button.dart';
+import 'package:flauncher/widgets/hls_proxy_install_button.dart';
 import 'package:flauncher/widgets/update_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -155,6 +156,7 @@ class _FLauncherState extends State<FLauncher> {
         children: [
           SubscriptionButton(),
           PlayerInstallButton(),
+          HlsProxyInstallButton(),
         ],
       ),
     ));

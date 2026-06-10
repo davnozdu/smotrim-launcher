@@ -49,6 +49,7 @@
             <action android:name="android.intent.action.GET_CONTENT" />
         </intent>
         <package android:name="cz.smotrim.player" />
+        <package android:name="com.hlsproxy.launcher" />
     </queries>
 
     <application
