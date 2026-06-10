@@ -55,6 +55,10 @@ class FLauncherChannel {
 
   Future<bool> isAppInstalled(String packageName) async => await _methodChannel.invokeMethod('isAppInstalled', packageName);
 
+  /// Installed app's versionName, or null if it isn't installed.
+  Future<String?> getAppVersion(String packageName) async =>
+      await _methodChannel.invokeMethod('getAppVersion', packageName);
+
   Future<bool> isDefaultLauncher() async => await _methodChannel.invokeMethod('isDefaultLauncher');
 
   Future<bool> checkForGetContentAvailability() async =>

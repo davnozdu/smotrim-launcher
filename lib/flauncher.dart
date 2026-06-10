@@ -28,8 +28,7 @@ import 'package:flauncher/widgets/launcher_alternative_view.dart';
 import 'package:flauncher/widgets/focus_aware_app_bar.dart';
 import 'package:flauncher/widgets/smotrim_banner.dart';
 import 'package:flauncher/widgets/subscription_button.dart';
-import 'package:flauncher/widgets/player_install_button.dart';
-import 'package:flauncher/widgets/hls_proxy_install_button.dart';
+import 'package:flauncher/widgets/companion_app_button.dart';
 import 'package:flauncher/widgets/update_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -148,15 +147,34 @@ class _FLauncherState extends State<FLauncher> {
 
     // "Renew subscription" + "Install/Update player" at the very bottom, under
     // all the apps, side by side with a small gap (wraps on narrow screens).
-    children.add(const Padding(
-      padding: EdgeInsets.only(top: 16, bottom: 8),
+    children.add(Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
       child: Wrap(
         spacing: 16,
         runSpacing: 12,
         children: [
-          SubscriptionButton(),
-          PlayerInstallButton(),
-          HlsProxyInstallButton(),
+          const SubscriptionButton(),
+          CompanionAppButton(
+            packageName: "cz.smotrim.player",
+            repo: "davnozdu/smotrim-player",
+            preferredAsset: "app-release.apk",
+            tempFileName: "smotrim-player.apk",
+            installLabel: (l) => l.installPlayer,
+            updateLabel: (l) => l.updatePlayer,
+            downloadingLabel: (l) => l.playerDownloading,
+            checkingLabel: (l) => l.checkingForUpdates,
+            upToDateLabel: (l) => l.alreadyUpToDate,
+          ),
+          CompanionAppButton(
+            packageName: "com.hlsproxy.launcher",
+            repo: "davnozdu/hls-proxy-android",
+            tempFileName: "hls-proxy.apk",
+            installLabel: (l) => l.installHlsProxy,
+            updateLabel: (l) => l.updateHlsProxy,
+            downloadingLabel: (l) => l.hlsProxyDownloading,
+            checkingLabel: (l) => l.checkingForUpdates,
+            upToDateLabel: (l) => l.alreadyUpToDate,
+          ),
         ],
       ),
     ));

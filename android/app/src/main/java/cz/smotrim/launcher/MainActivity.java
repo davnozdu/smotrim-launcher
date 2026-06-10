@@ -94,6 +94,7 @@ public class MainActivity extends FlutterActivity {
                 case "uninstallApp" -> result.success(uninstallApp(call.arguments()));
                 case "installApk" -> result.success(installApk(call.arguments()));
                 case "isAppInstalled" -> result.success(isAppInstalled(call.arguments()));
+                case "getAppVersion" -> result.success(getAppVersion(call.arguments()));
                 case "isDefaultLauncher" -> result.success(isDefaultLauncher());
                 case "checkForGetContentAvailability" -> result.success(checkForGetContentAvailability());
                 case "startAmbientMode" -> result.success(startAmbientMode());
@@ -460,6 +461,15 @@ public class MainActivity extends FlutterActivity {
             return true;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    // Returns the installed app's versionName, or null if it isn't installed.
+    private String getAppVersion(String packageName) {
+        try {
+            return getPackageManager().getPackageInfo(packageName, 0).versionName;
+        } catch (Exception e) {
+            return null;
         }
     }
 
