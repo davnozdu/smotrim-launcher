@@ -118,19 +118,23 @@ class _HlsProxyInstallButtonState extends State<HlsProxyInstallButton> {
       var received = 0;
       var lastPercent = -1;
 
-      await for (final chunk in response) {
-        sink.add(chunk);
-        received += chunk.length;
-        if (total > 0) {
-          final percent = received * 100 ~/ total;
-          if (percent != lastPercent) {
-            lastPercent = percent;
-            if (mounted) setState(() => _progress = received / total);
+      try {
+        await for (final chunk in response) {
+          sink.add(chunk);
+          received += chunk.length;
+          if (total > 0) {
+            final percent = received * 100 ~/ total;
+            if (percent != lastPercent) {
+              lastPercent = percent;
+              if (mounted) setState(() => _progress = received / total);
+            }
           }
         }
+      } finally {
+        // close() flushes pending writes and releases the file handle even if
+        // the stream errors out mid-download.
+        await sink.close();
       }
-      await sink.flush();
-      await sink.close();
 
       await _channel.installApk(file.path);
     } catch (e) {

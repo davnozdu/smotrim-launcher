@@ -148,21 +148,25 @@ class UpdateService extends ChangeNotifier {
       var received = 0;
       var lastPercent = -1;
 
-      await for (final chunk in response) {
-        sink.add(chunk);
-        received += chunk.length;
-        if (total > 0) {
-          // Only notify on whole-percent changes to avoid excessive rebuilds.
-          final percent = (received * 100 ~/ total);
-          if (percent != lastPercent) {
-            lastPercent = percent;
-            _downloadProgress = received / total;
-            notifyListeners();
+      try {
+        await for (final chunk in response) {
+          sink.add(chunk);
+          received += chunk.length;
+          if (total > 0) {
+            // Only notify on whole-percent changes to avoid excessive rebuilds.
+            final percent = (received * 100 ~/ total);
+            if (percent != lastPercent) {
+              lastPercent = percent;
+              _downloadProgress = received / total;
+              notifyListeners();
+            }
           }
         }
+      } finally {
+        // close() flushes pending writes and releases the file handle even if
+        // the stream errors out mid-download.
+        await sink.close();
       }
-      await sink.flush();
-      await sink.close();
 
       final started = await _channel.installApk(file.path);
       // The system installer takes over; keep status "available" so the prompt
