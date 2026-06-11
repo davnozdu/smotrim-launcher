@@ -20,11 +20,14 @@ import 'package:flauncher/l10n/app_localizations.dart';
 /// Installs or updates the HLS-PROXY companion app from its GitHub releases.
 ///
 /// On press it first compares the installed versionName against the latest
-/// release tag: if it's already up to date it shows a brief message and
-/// downloads nothing. The release asset name carries an internal version
-/// (e.g. `hls-proxy-launcher-8.4.8.apk`), so we resolve the first `.apk` of the
-/// `latest` release via the GitHub API. Installing the same package over an
-/// existing one updates it and keeps its data (same signature).
+/// release tag: if it's already up to date it tells the user so in a dialog
+/// and downloads nothing. The release asset name carries an internal version
+/// (e.g. `hls-proxy-launcher-8.4.8.apk`), so the `.apk` link is taken from the
+/// release's `expanded_assets` page.
+///
+/// Everything goes through github.com — deliberately NOT api.github.com,
+/// whose anonymous rate limit is shared per IP and routinely exhausted behind
+/// carrier-grade NAT.
 class HlsProxyInstallButton extends StatefulWidget {
   const HlsProxyInstallButton({super.key});
 
@@ -36,8 +39,7 @@ enum _Phase { idle, checking, downloading }
 
 class _HlsProxyInstallButtonState extends State<HlsProxyInstallButton> {
   static const String _hlsPackage = "com.hlsproxy.launcher";
-  static const String _latestApiUrl =
-      "https://api.github.com/repos/davnozdu/hls-proxy-android/releases/latest";
+  static const String _repo = "davnozdu/hls-proxy-android";
 
   final FLauncherChannel _channel = FLauncherChannel();
   bool _focused = false;
@@ -58,50 +60,65 @@ class _HlsProxyInstallButtonState extends State<HlsProxyInstallButton> {
     } catch (_) {}
   }
 
-  /// Fetches the latest release: returns (tagName, apkDownloadUrl).
-  Future<(String, String)?> _fetchLatest(HttpClient client) async {
-    final request = await client.getUrl(Uri.parse(_latestApiUrl));
-    request.headers.set(HttpHeaders.userAgentHeader, "SmotrimLauncher");
-    request.headers.set(HttpHeaders.acceptHeader, "application/vnd.github+json");
-    final response = await request.close();
-    if (response.statusCode != HttpStatus.ok) return null;
-
-    final json = jsonDecode(await response.transform(utf8.decoder).join()) as Map<String, dynamic>;
-    final tag = json["tag_name"] as String?;
-    final assets = (json["assets"] as List?) ?? const [];
-
-    String? apkUrl;
-    for (final a in assets) {
-      final name = (a["name"] as String?) ?? "";
-      if (name.toLowerCase().endsWith(".apk")) {
-        apkUrl = a["browser_download_url"] as String?;
-        break;
-      }
+  /// Resolves the latest release tag from the `releases/latest` redirect
+  /// (e.g. `.../releases/tag/v2.0.10` -> `v2.0.10`). Returns null on failure.
+  Future<String?> _fetchLatestTag(HttpClient client) async {
+    try {
+      final request =
+          await client.getUrl(Uri.parse("https://github.com/$_repo/releases/latest"));
+      request.followRedirects = false;
+      final response = await request.close();
+      await response.drain();
+      if (response.statusCode < 300 || response.statusCode >= 400) return null;
+      final location = response.headers.value(HttpHeaders.locationHeader) ?? "";
+      return RegExp(r'/tag/([^/?#]+)').firstMatch(location)?.group(1);
+    } catch (e) {
+      debugPrint("HLS-PROXY: latest tag resolution failed: $e");
+      return null;
     }
-    if (tag == null || apkUrl == null) return null;
-    return (tag, apkUrl);
+  }
+
+  /// Finds the first `.apk` link on the release's assets fragment page.
+  Future<String?> _resolveApkUrl(HttpClient client, String tag) async {
+    try {
+      final request = await client
+          .getUrl(Uri.parse("https://github.com/$_repo/releases/expanded_assets/$tag"));
+      final response = await request.close();
+      if (response.statusCode != HttpStatus.ok) return null;
+      final html = await response.transform(utf8.decoder).join();
+      final match = RegExp(r'href="([^"]*\.apk)"').firstMatch(html);
+      if (match == null) return null;
+      var url = match.group(1)!;
+      if (url.startsWith("/")) url = "https://github.com$url";
+      return url;
+    } catch (e) {
+      debugPrint("HLS-PROXY: asset resolution failed: $e");
+      return null;
+    }
   }
 
   Future<void> _onPressed() async {
     if (_phase != _Phase.idle) return;
+    final l = AppLocalizations.of(context)!;
     setState(() => _phase = _Phase.checking);
 
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
     try {
-      final latest = await _fetchLatest(client);
-      if (latest == null) {
-        debugPrint("HLS-PROXY: failed to resolve latest release");
+      final tag = await _fetchLatestTag(client);
+      if (tag == null) {
+        _showMessage(l.updateCheckFailed);
         return;
       }
-      final (tag, apkUrl) = latest;
 
       final installedVersion = await _channel.getAppVersion(_hlsPackage);
       if (installedVersion != null && _compareVersions(tag, installedVersion) <= 0) {
-        if (mounted) {
-          setState(() => _phase = _Phase.idle);
-          final l = AppLocalizations.of(context)!;
-          _showSnack("${l.alreadyUpToDate} ($installedVersion)");
-        }
+        _showMessage("${l.alreadyUpToDate} ($installedVersion)");
+        return;
+      }
+
+      final apkUrl = await _resolveApkUrl(client, tag);
+      if (apkUrl == null) {
+        _showMessage(l.updateCheckFailed);
         return;
       }
 
@@ -109,7 +126,10 @@ class _HlsProxyInstallButtonState extends State<HlsProxyInstallButton> {
 
       final request = await client.getUrl(Uri.parse(apkUrl));
       final response = await request.close();
-      if (response.statusCode != HttpStatus.ok) return;
+      if (response.statusCode != HttpStatus.ok) {
+        _showMessage(l.downloadFailed);
+        return;
+      }
 
       final dir = await getTemporaryDirectory();
       final file = File("${dir.path}/hls-proxy.apk");
@@ -139,6 +159,7 @@ class _HlsProxyInstallButtonState extends State<HlsProxyInstallButton> {
       await _channel.installApk(file.path);
     } catch (e) {
       debugPrint("HLS-PROXY install failed: $e");
+      _showMessage(l.downloadFailed);
     } finally {
       client.close();
       if (mounted) setState(() => _phase = _Phase.idle);
@@ -146,10 +167,24 @@ class _HlsProxyInstallButtonState extends State<HlsProxyInstallButton> {
     }
   }
 
-  void _showSnack(String text) {
+  /// TV-friendly result dialog: always visible (unlike a snackbar) and
+  /// dismissable with the remote (OK button autofocused).
+  void _showMessage(String text) {
     if (!mounted) return;
-    ScaffoldMessenger.maybeOf(context)
-        ?.showSnackBar(SnackBar(content: Text(text), duration: const Duration(seconds: 3)));
+    setState(() => _phase = _Phase.idle);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Text(text),
+        actions: [
+          TextButton(
+            autofocus: true,
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Numeric, component-wise version compare. Returns >0 if [a] is newer.

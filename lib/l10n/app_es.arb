@@ -205,5 +205,7 @@
     "checkForUpdates": "Buscar actualizaciones",
     "checkingForUpdates": "Buscando actualizaciones…",
     "alreadyUpToDate": "Tiene la última versión",
+    "updateCheckFailed": "No se pudieron comprobar las actualizaciones. Inténtelo más tarde.",
+    "downloadFailed": "Error de descarga. Inténtelo más tarde.",
     "install": "Instalar"
 }

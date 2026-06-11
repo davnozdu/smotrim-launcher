@@ -9,7 +9,6 @@
  */
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -20,10 +19,14 @@ import 'package:flauncher/l10n/app_localizations.dart';
 /// Installs or updates the companion Smotrim Player from its GitHub releases.
 ///
 /// On press it first compares the installed versionName against the latest
-/// release tag: if it's already up to date it shows a brief message and
-/// downloads nothing; otherwise it pulls the universal `app-release.apk` from
-/// the `latest` release and installs/updates in place (data preserved, same
-/// signature).
+/// release tag: if it's already up to date it tells the user so in a dialog
+/// and downloads nothing; otherwise it pulls the universal `app-release.apk`
+/// from the `latest` release and installs/updates in place (data preserved,
+/// same signature).
+///
+/// The latest tag is resolved from the redirect of `releases/latest` on
+/// github.com — deliberately NOT via api.github.com, whose anonymous rate
+/// limit is shared per IP and routinely exhausted behind carrier-grade NAT.
 class PlayerInstallButton extends StatefulWidget {
   const PlayerInstallButton({super.key});
 
@@ -35,9 +38,9 @@ enum _Phase { idle, checking, downloading }
 
 class _PlayerInstallButtonState extends State<PlayerInstallButton> {
   static const String _playerPackage = "cz.smotrim.player";
-  static const String _latestApiUrl =
-      "https://api.github.com/repos/davnozdu/smotrim-player/releases/latest";
-  static const String _preferredAsset = "app-release.apk";
+  static const String _repo = "davnozdu/smotrim-player";
+  static const String _apkUrl =
+      "https://github.com/$_repo/releases/latest/download/app-release.apk";
 
   final FLauncherChannel _channel = FLauncherChannel();
   bool _focused = false;
@@ -58,57 +61,51 @@ class _PlayerInstallButtonState extends State<PlayerInstallButton> {
     } catch (_) {}
   }
 
-  /// Fetches the latest release: returns (tagName, apkDownloadUrl).
-  Future<(String, String)?> _fetchLatest(HttpClient client) async {
-    final request = await client.getUrl(Uri.parse(_latestApiUrl));
-    request.headers.set(HttpHeaders.userAgentHeader, "SmotrimLauncher");
-    request.headers.set(HttpHeaders.acceptHeader, "application/vnd.github+json");
-    final response = await request.close();
-    if (response.statusCode != HttpStatus.ok) return null;
-
-    final json = jsonDecode(await response.transform(utf8.decoder).join()) as Map<String, dynamic>;
-    final tag = json["tag_name"] as String?;
-    final assets = (json["assets"] as List?) ?? const [];
-
-    String? apkUrl;
-    for (final a in assets) {
-      if ((a["name"] as String?) == _preferredAsset) {
-        apkUrl = a["browser_download_url"] as String?;
-        break;
-      }
+  /// Resolves the latest release tag from the `releases/latest` redirect
+  /// (e.g. `.../releases/tag/v1.7.25` -> `v1.7.25`). Returns null on failure.
+  Future<String?> _fetchLatestTag(HttpClient client) async {
+    try {
+      final request =
+          await client.getUrl(Uri.parse("https://github.com/$_repo/releases/latest"));
+      request.followRedirects = false;
+      final response = await request.close();
+      await response.drain();
+      if (response.statusCode < 300 || response.statusCode >= 400) return null;
+      final location = response.headers.value(HttpHeaders.locationHeader) ?? "";
+      return RegExp(r'/tag/([^/?#]+)').firstMatch(location)?.group(1);
+    } catch (e) {
+      debugPrint("Player: latest tag resolution failed: $e");
+      return null;
     }
-    if (tag == null || apkUrl == null) return null;
-    return (tag, apkUrl);
   }
 
   Future<void> _onPressed() async {
     if (_phase != _Phase.idle) return;
+    final l = AppLocalizations.of(context)!;
     setState(() => _phase = _Phase.checking);
 
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
     try {
-      final latest = await _fetchLatest(client);
-      if (latest == null) {
-        debugPrint("Player: failed to resolve latest release");
+      final tag = await _fetchLatestTag(client);
+      if (tag == null) {
+        _showMessage(l.updateCheckFailed);
         return;
       }
-      final (tag, apkUrl) = latest;
 
       final installedVersion = await _channel.getAppVersion(_playerPackage);
       if (installedVersion != null && _compareVersions(tag, installedVersion) <= 0) {
-        if (mounted) {
-          setState(() => _phase = _Phase.idle);
-          final l = AppLocalizations.of(context)!;
-          _showSnack("${l.alreadyUpToDate} ($installedVersion)");
-        }
+        _showMessage("${l.alreadyUpToDate} ($installedVersion)");
         return;
       }
 
       if (mounted) setState(() { _phase = _Phase.downloading; _progress = 0; });
 
-      final request = await client.getUrl(Uri.parse(apkUrl));
+      final request = await client.getUrl(Uri.parse(_apkUrl));
       final response = await request.close();
-      if (response.statusCode != HttpStatus.ok) return;
+      if (response.statusCode != HttpStatus.ok) {
+        _showMessage(l.downloadFailed);
+        return;
+      }
 
       final dir = await getTemporaryDirectory();
       final file = File("${dir.path}/smotrim-player.apk");
@@ -138,6 +135,7 @@ class _PlayerInstallButtonState extends State<PlayerInstallButton> {
       await _channel.installApk(file.path);
     } catch (e) {
       debugPrint("Player install failed: $e");
+      _showMessage(l.downloadFailed);
     } finally {
       client.close();
       if (mounted) setState(() => _phase = _Phase.idle);
@@ -145,10 +143,24 @@ class _PlayerInstallButtonState extends State<PlayerInstallButton> {
     }
   }
 
-  void _showSnack(String text) {
+  /// TV-friendly result dialog: always visible (unlike a snackbar) and
+  /// dismissable with the remote (OK button autofocused).
+  void _showMessage(String text) {
     if (!mounted) return;
-    ScaffoldMessenger.maybeOf(context)
-        ?.showSnackBar(SnackBar(content: Text(text), duration: const Duration(seconds: 3)));
+    setState(() => _phase = _Phase.idle);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Text(text),
+        actions: [
+          TextButton(
+            autofocus: true,
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Numeric, component-wise version compare. Returns >0 if [a] is newer.
