@@ -220,6 +220,11 @@ class _AppStorePageState extends State<AppStorePage> {
                   javaScriptEnabled: true,
                   transparentBackground: true,
                   supportZoom: false,
+                  // Hide the native Android WebView scrollbars (CSS can't touch
+                  // them); scrolling itself stays enabled.
+                  verticalScrollBarEnabled: false,
+                  horizontalScrollBarEnabled: false,
+                  overScrollMode: OverScrollMode.NEVER,
                 ),
                 onWebViewCreated: (controller) => _controller = controller,
                 onLoadStart: (controller, url) {
