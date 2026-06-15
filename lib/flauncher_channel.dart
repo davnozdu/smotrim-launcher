@@ -63,6 +63,12 @@ class FLauncherChannel {
   Future<bool> checkForGetContentAvailability() async =>
       await _methodChannel.invokeMethod("checkForGetContentAvailability");
 
+  /// Active network info: { networkAccess, internetAccess, networkType, wirelessSignalLevel }.
+  Future<Map<String, dynamic>> getActiveNetworkInformation() async {
+    final map = await _methodChannel.invokeMethod("getActiveNetworkInformation");
+    return (map as Map).cast<String, dynamic>();
+  }
+
   Future<void> openWifiSettings() async =>
       await _methodChannel.invokeMethod("openWifiSettings");
 

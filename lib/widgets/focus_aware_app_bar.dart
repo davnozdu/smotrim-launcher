@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/settings_service.dart';
 import 'date_time_widget.dart';
+import 'network_status_icon.dart';
 
 class FocusAwareAppBar extends StatefulWidget implements PreferredSizeWidget
 {
@@ -86,6 +87,8 @@ class FocusAwareAppBarState extends State<FocusAwareAppBar>
                 focusNode: _settingsFocusNode,
                 onPressed: () => showDialog(context: context, builder: (_) => const SettingsPanel()),
               ),
+              // Network availability indicator next to the gear.
+              const NetworkStatusIcon(),
               Selector<SettingsService, bool>(
                 selector: (_, settings) => settings.showInputsWidgetInStatusBar,
                 builder: (context, showInputs, _) => showInputs

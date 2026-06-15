@@ -12,6 +12,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flauncher/flauncher_channel.dart';
@@ -159,6 +160,40 @@ class _AppStorePageState extends State<AppStorePage> {
     _exitTimer?.cancel();
   }
 
+  // D-pad keys → forwarded into the page as a synthetic keydown on `window`.
+  // The store (tv.smotrim.cz) runs its own JS navigation off window 'keydown';
+  // on Android TV the embedded WebView doesn't reliably receive D-pad itself,
+  // so we capture it in Flutter and replay it into the page.
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final key = event.logicalKey;
+    (String, int)? mapping;
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      mapping = ("ArrowLeft", 37);
+    } else if (key == LogicalKeyboardKey.arrowRight) {
+      mapping = ("ArrowRight", 39);
+    } else if (key == LogicalKeyboardKey.arrowUp) {
+      mapping = ("ArrowUp", 38);
+    } else if (key == LogicalKeyboardKey.arrowDown) {
+      mapping = ("ArrowDown", 40);
+    } else if (key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter ||
+        key == LogicalKeyboardKey.gameButtonA) {
+      mapping = ("Enter", 13);
+    }
+    if (mapping == null) return KeyEventResult.ignored;
+    _forwardKey(mapping.$1, mapping.$2);
+    return KeyEventResult.handled;
+  }
+
+  void _forwardKey(String key, int code) {
+    _controller?.evaluateJavascript(source:
+        "window.dispatchEvent(new KeyboardEvent('keydown',{key:'$key',code:'$key',keyCode:$code,which:$code,bubbles:true,cancelable:true}));");
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -174,7 +209,10 @@ class _AppStorePageState extends State<AppStorePage> {
         body: SafeArea(
           child: Stack(
             children: [
-              InAppWebView(
+              Focus(
+                autofocus: true,
+                onKeyEvent: _onKeyEvent,
+                child: InAppWebView(
                 initialUrlRequest: URLRequest(url: WebUri(AppStorePage.storeUrl)),
                 initialSettings: InAppWebViewSettings(
                   // Required for onDownloadStartRequest to fire.
@@ -199,6 +237,7 @@ class _AppStorePageState extends State<AppStorePage> {
                 onDownloadStartRequest: (controller, request) {
                   _downloadAndInstall(request.url.toString(), request.suggestedFilename);
                 },
+              ),
               ),
               if (_pageLoading)
                 const Center(child: CircularProgressIndicator()),
