@@ -25,7 +25,6 @@ import 'focusable_settings_tile.dart';
 import 'brightness_settings_page.dart';
 import 'date_time_format_page.dart';
 import 'back_button_action_page.dart';
-import 'data_usage_period_page.dart';
 import 'screensaver_clock_style_page.dart';
 import 'launcher_update_dialog.dart';
 
@@ -80,11 +79,6 @@ class GeneralSettingsPage extends StatelessWidget {
                   leading: const Icon(Icons.arrow_back),
                   title: Text(localizations.backButtonAction, style: Theme.of(context).textTheme.bodyMedium),
                   onPressed: () => Navigator.of(context).pushNamed(BackButtonActionPage.routeName),
-                ),
-                FocusableSettingsTile(
-                  leading: const Icon(Icons.data_usage),
-                  title: Text(localizations.dataUsagePeriod, style: Theme.of(context).textTheme.bodyMedium),
-                  onPressed: () => Navigator.of(context).pushNamed(DataUsagePeriodPage.routeName),
                 ),
                 Consumer<NotificationsService>(
                   builder: (context, service, _) {

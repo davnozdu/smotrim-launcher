@@ -214,5 +214,6 @@
     "appStore": "Магазин приложений",
     "appStoreShort": "AppHub",
     "appStoreDownloading": "Загрузка приложения…",
+    "pressBackAgainToExit": "Нажмите повторно для выхода",
     "install": "Установить"
 }

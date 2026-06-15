@@ -214,5 +214,6 @@
     "appStore": "App Store",
     "appStoreShort": "AppHub",
     "appStoreDownloading": "Downloading app…",
+    "pressBackAgainToExit": "Press Back again to exit",
     "install": "Install"
 }

@@ -5,9 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/settings_service.dart';
-import 'daily_data_usage_widget.dart';
 import 'date_time_widget.dart';
-import 'network_widget.dart';
 
 class FocusAwareAppBar extends StatefulWidget implements PreferredSizeWidget
 {
@@ -115,23 +113,6 @@ class FocusAwareAppBarState extends State<FocusAwareAppBar>
                   : const SizedBox.shrink(),
               ),
               const SizedBox(width: 16),
-              // Network indicator (conditionally shown)
-              Selector<SettingsService, bool>(
-                selector: (_, settings) => settings.showNetworkIndicatorInStatusBar,
-                builder: (context, showNetwork, _) => showNetwork
-                  ? Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: _FocusableNetworkWidget(),
-                    )
-                  : const SizedBox.shrink(),
-              ),
-              // Data usage widget
-              Selector<SettingsService, bool>(
-                selector: (_, settings) => settings.showDataWidgetInStatusBar,
-                builder: (context, showData, _) => showData
-                  ? const DailyDataUsageWidget()
-                  : const SizedBox.shrink(),
-              ),
             ],
           ),
           // Right side: Date/Time only
@@ -240,35 +221,6 @@ class _FocusableIconButtonState extends State<_FocusableIconButton> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Network widget with consistent focus indicator
-class _FocusableNetworkWidget extends StatefulWidget {
-  @override
-  State<_FocusableNetworkWidget> createState() => _FocusableNetworkWidgetState();
-}
-
-class _FocusableNetworkWidgetState extends State<_FocusableNetworkWidget> {
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Focus(
-      onFocusChange: (hasFocus) => setState(() => _focused = hasFocus),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          border: _focused
-            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
-            : null,
-          boxShadow: _focused
-            ? const [BoxShadow(color: Colors.black54, blurRadius: 8, spreadRadius: 1)]
-            : null,
-        ),
-        child: const NetworkWidget(),
       ),
     );
   }

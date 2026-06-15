@@ -12,21 +12,25 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flauncher/flauncher_channel.dart';
 import 'package:flauncher/l10n/app_localizations.dart';
 
 /// Full-screen WebView for the Smotrim app store (https://tv.smotrim.cz).
 ///
-/// D-pad navigation is handled natively by the Android WebView (spatial focus
-/// between links/buttons). The remote's Back button walks the WebView history
-/// first and only leaves the store once there's nothing left to go back to.
+/// The store is a TV-first site that runs its own D-pad navigation in
+/// JavaScript (it listens for Arrow/Enter/Escape keydown). The native WebView
+/// from flutter_inappwebview forwards those hardware keys, so the remote drives
+/// the page directly — that's why we use it instead of webview_flutter, which
+/// doesn't deliver D-pad to the page on Android TV.
 ///
-/// Tapping an app whose link points to a `.apk` is intercepted: instead of the
-/// WebView trying to render the binary, the launcher downloads it and hands it
-/// to the system installer (same path as the player/HLS-PROXY buttons). App
-/// links on the store must therefore be direct `.apk` URLs.
+/// App installs are caught via [onDownloadStartRequest] (the store triggers a
+/// download whose URL is NOT a plain `.apk`, e.g. `version.php?...&download=1`),
+/// then downloaded and handed to the system installer.
+///
+/// The remote's Back button walks the WebView history first; at the store's
+/// root it asks for a second press ("press Back again to exit") before leaving.
 class AppStorePage extends StatefulWidget {
   static const String storeUrl = "https://tv.smotrim.cz";
 
@@ -38,42 +42,22 @@ class AppStorePage extends StatefulWidget {
 
 class _AppStorePageState extends State<AppStorePage> {
   final FLauncherChannel _channel = FLauncherChannel();
-  late final WebViewController _controller;
+  InAppWebViewController? _controller;
 
   bool _pageLoading = true;
   bool _downloading = false;
   double _progress = 0;
 
+  bool _exitArmed = false;
+  Timer? _exitTimer;
+
   @override
-  void initState() {
-    super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
-      ..setNavigationDelegate(NavigationDelegate(
-        onPageStarted: (_) {
-          if (mounted) setState(() => _pageLoading = true);
-        },
-        onPageFinished: (_) {
-          if (mounted) setState(() => _pageLoading = false);
-        },
-        onNavigationRequest: (request) {
-          if (_isApkUrl(request.url)) {
-            _downloadAndInstall(request.url);
-            return NavigationDecision.prevent;
-          }
-          return NavigationDecision.navigate;
-        },
-      ))
-      ..loadRequest(Uri.parse(AppStorePage.storeUrl));
+  void dispose() {
+    _exitTimer?.cancel();
+    super.dispose();
   }
 
-  bool _isApkUrl(String url) {
-    final path = Uri.tryParse(url)?.path.toLowerCase() ?? "";
-    return path.endsWith(".apk");
-  }
-
-  Future<void> _downloadAndInstall(String url) async {
+  Future<void> _downloadAndInstall(String url, String? suggestedName) async {
     if (_downloading) return;
     setState(() {
       _downloading = true;
@@ -90,7 +74,7 @@ class _AppStorePageState extends State<AppStorePage> {
       }
 
       final dir = await getTemporaryDirectory();
-      final name = _fileNameFor(url);
+      final name = _sanitizeApkName(suggestedName);
       final file = File("${dir.path}/$name");
       final sink = file.openWrite();
       final total = response.contentLength;
@@ -124,10 +108,9 @@ class _AppStorePageState extends State<AppStorePage> {
     }
   }
 
-  String _fileNameFor(String url) {
-    final segments = Uri.tryParse(url)?.pathSegments ?? const [];
-    final segment = segments.isNotEmpty ? segments.last : "";
-    if (segment.toLowerCase().endsWith(".apk")) return segment;
+  String _sanitizeApkName(String? suggested) {
+    final cleaned = (suggested ?? "").replaceAll(RegExp(r'[^A-Za-z0-9._-]'), "");
+    if (cleaned.toLowerCase().endsWith(".apk") && cleaned.length > 4) return cleaned;
     return "appstore-download.apk";
   }
 
@@ -149,26 +132,74 @@ class _AppStorePageState extends State<AppStorePage> {
     );
   }
 
+  Future<void> _handleBack() async {
+    if (await (_controller?.canGoBack() ?? Future.value(false))) {
+      await _controller?.goBack();
+      _disarmExit();
+      return;
+    }
+    if (_exitArmed) {
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
+    _exitArmed = true;
+    final l = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(
+        content: Text(l.pressBackAgainToExit),
+        duration: const Duration(milliseconds: 2500),
+      ));
+    _exitTimer?.cancel();
+    _exitTimer = Timer(const Duration(milliseconds: 2500), () => _exitArmed = false);
+  }
+
+  void _disarmExit() {
+    _exitArmed = false;
+    _exitTimer?.cancel();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) async {
+      onPopInvoked: (didPop) {
         if (didPop) return;
-        if (await _controller.canGoBack()) {
-          await _controller.goBack();
-        } else if (mounted) {
-          Navigator.of(context).pop();
-        }
+        _handleBack();
       },
       child: Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
           child: Stack(
             children: [
-              WebViewWidget(controller: _controller),
+              InAppWebView(
+                initialUrlRequest: URLRequest(url: WebUri(AppStorePage.storeUrl)),
+                initialSettings: InAppWebViewSettings(
+                  // Required for onDownloadStartRequest to fire.
+                  useOnDownloadStart: true,
+                  javaScriptEnabled: true,
+                  transparentBackground: true,
+                  supportZoom: false,
+                ),
+                onWebViewCreated: (controller) => _controller = controller,
+                onLoadStart: (controller, url) {
+                  if (mounted) setState(() => _pageLoading = true);
+                },
+                onLoadStop: (controller, url) async {
+                  if (mounted) setState(() => _pageLoading = false);
+                  // Nudge focus into the page so the site's JS key handlers
+                  // start receiving D-pad events immediately.
+                  await controller.evaluateJavascript(source: "window.focus();");
+                },
+                onReceivedError: (controller, request, error) {
+                  if (mounted) setState(() => _pageLoading = false);
+                },
+                onDownloadStartRequest: (controller, request) {
+                  _downloadAndInstall(request.url.toString(), request.suggestedFilename);
+                },
+              ),
               if (_pageLoading)
                 const Center(child: CircularProgressIndicator()),
               if (_downloading)

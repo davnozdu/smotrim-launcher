@@ -214,5 +214,6 @@
     "appStore": "Магазин застосунків",
     "appStoreShort": "AppHub",
     "appStoreDownloading": "Завантаження застосунку…",
+    "pressBackAgainToExit": "Натисніть ще раз для виходу",
     "install": "Встановити"
 }

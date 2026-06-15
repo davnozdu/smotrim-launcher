@@ -37,18 +37,10 @@ const _appSelectorTransitionAnimationEnabledKey = "app_selector_transition_anima
 const _showDateInStatusBarKey = "show_date_in_status_bar";
 const _showTimeInStatusBarKey = "show_time_in_status_bar";
 const _timeFormatKey = "time_format";
-const _dataUsagePeriodKey = "wifi_usage_period";
-const _showDataWidgetInStatusBarKey = "show_wifi_widget_in_status_bar";
-const String _showNetworkIndicatorInStatusBarKey = "show_network_indicator_in_status_bar";
 const String _accentColorKey = "accent_color";
 const String _screensaverClockStyleKey = "screensaver_clock_style";
 const String _timeBasedWallpaperEnabledKey = "time_based_wallpaper_enabled";
 const String _showInputsWidgetInStatusBarKey = "show_inputs_widget_in_status_bar";
-
-// WiFi usage period options
-const String DATA_USAGE_DAILY = "daily";
-const String DATA_USAGE_WEEKLY = "weekly";
-const String DATA_USAGE_MONTHLY = "monthly";
 
 // Accent color presets (hex values)
 const String ACCENT_COLOR_PURPLE = "7C4DFF";
@@ -86,9 +78,6 @@ class SettingsService extends ChangeNotifier {
   late String _backButtonAction;
   late String _dateFormat;
   late String _timeFormat;
-  late String _dataUsagePeriod;
-  late bool _showDataWidgetInStatusBar;
-  late bool _showNetworkIndicatorInStatusBar;
   late String _accentColorHex;
   late String _screensaverClockStyle;
   late bool _timeBasedWallpaperEnabled;
@@ -122,12 +111,6 @@ class SettingsService extends ChangeNotifier {
 
   String get timeFormat => _timeFormat;
 
-  String get dataUsagePeriod => _dataUsagePeriod;
-
-  bool get showDataWidgetInStatusBar => _showDataWidgetInStatusBar;
-
-  bool get showNetworkIndicatorInStatusBar => _showNetworkIndicatorInStatusBar;
-
   bool get showInputsWidgetInStatusBar => _showInputsWidgetInStatusBar;
 
   String get accentColorHex => _accentColorHex;
@@ -154,9 +137,6 @@ class SettingsService extends ChangeNotifier {
     _backButtonAction = _sharedPreferences.getString(_backButtonActionKey) ?? BACK_BUTTON_ACTION_NOTHING;
     _dateFormat = _sharedPreferences.getString(_dateFormatKey) ?? defaultDateFormat;
     _timeFormat = _sharedPreferences.getString(_timeFormatKey) ?? defaultTimeFormat;
-    _dataUsagePeriod = _sharedPreferences.getString(_dataUsagePeriodKey) ?? DATA_USAGE_DAILY;
-    _showDataWidgetInStatusBar = _sharedPreferences.getBool(_showDataWidgetInStatusBarKey) ?? true;
-    _showNetworkIndicatorInStatusBar = _sharedPreferences.getBool(_showNetworkIndicatorInStatusBarKey) ?? true;
     _accentColorHex = _sharedPreferences.getString(_accentColorKey) ?? ACCENT_COLOR_PURPLE;
     _screensaverClockStyle = _sharedPreferences.getString(_screensaverClockStyleKey) ?? "minimal";
     _timeBasedWallpaperEnabled = _sharedPreferences.getBool(_timeBasedWallpaperEnabledKey) ?? false;
@@ -242,24 +222,6 @@ class SettingsService extends ChangeNotifier {
   Future<void> setShowTimeInStatusBar(bool show) async {
     await _sharedPreferences.setBool(_showTimeInStatusBarKey, show);
     _showTimeInStatusBar = show;
-    notifyListeners();
-  }
-
-  Future<void> setDataUsagePeriod(String period) async {
-    await _sharedPreferences.setString(_dataUsagePeriodKey, period);
-    _dataUsagePeriod = period;
-    notifyListeners();
-  }
-
-  Future<void> setShowDataWidgetInStatusBar(bool show) async {
-    await _sharedPreferences.setBool(_showDataWidgetInStatusBarKey, show);
-    _showDataWidgetInStatusBar = show;
-    notifyListeners();
-  }
-
-  Future<void> setShowNetworkIndicatorInStatusBar(bool show) async {
-    await _sharedPreferences.setBool(_showNetworkIndicatorInStatusBarKey, show);
-    _showNetworkIndicatorInStatusBar = show;
     notifyListeners();
   }
 

@@ -210,5 +210,6 @@
     "appStore": "Tienda de aplicaciones",
     "appStoreShort": "AppHub",
     "appStoreDownloading": "Descargando aplicación…",
+    "pressBackAgainToExit": "Pulse Atrás de nuevo para salir",
     "install": "Instalar"
 }

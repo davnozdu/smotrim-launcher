@@ -23,7 +23,6 @@ import 'package:flutter/services.dart';
 class FLauncherChannel {
   static const _methodChannel = MethodChannel('cz.smotrim.launcher/method');
   static const _appsEventChannel = EventChannel('cz.smotrim.launcher/event_apps');
-  static const _networkEventChannel = EventChannel('cz.smotrim.launcher/event_network');
   static const _notificationsEventChannel = EventChannel('cz.smotrim.launcher/event_notifications');
 
   Future<List<Map<dynamic, dynamic>>> getApplications() async {
@@ -64,44 +63,6 @@ class FLauncherChannel {
   Future<bool> checkForGetContentAvailability() async =>
       await _methodChannel.invokeMethod("checkForGetContentAvailability");
 
-  Future<Map<String, dynamic>> getActiveNetworkInformation() async {
-    Map<dynamic, dynamic> map = await _methodChannel.invokeMethod("getActiveNetworkInformation");
-    return map.cast<String, dynamic>();
-  }
-
-  Future<int> getDailyDataUsage() async {
-    try {
-      final int usage = await _methodChannel.invokeMethod("getDailyDataUsage");
-      return usage;
-    } on PlatformException catch (_) {
-      return -1;
-    }
-  }
-
-  Future<int> getWeeklyDataUsage() async {
-    try {
-      final int usage = await _methodChannel.invokeMethod("getWeeklyDataUsage");
-      return usage;
-    } on PlatformException catch (_) {
-      return -1;
-    }
-  }
-
-  Future<int> getMonthlyDataUsage() async {
-    try {
-      final int usage = await _methodChannel.invokeMethod("getMonthlyDataUsage");
-      return usage;
-    } on PlatformException catch (_) {
-      return -1;
-    }
-  }
-
-  Future<bool> checkUsageStatsPermission() async =>
-      await _methodChannel.invokeMethod("checkUsageStatsPermission");
-
-  Future<void> requestUsageStatsPermission() async =>
-      await _methodChannel.invokeMethod("requestUsageStatsPermission");
-
   Future<void> openWifiSettings() async =>
       await _methodChannel.invokeMethod("openWifiSettings");
 
@@ -112,12 +73,6 @@ class FLauncherChannel {
 
   void addAppsChangedListener(void Function(Map<String, dynamic>) listener) =>
       _appsEventChannel.receiveBroadcastStream().listen((event) {
-        Map<dynamic, dynamic> eventMap = event;
-        listener(eventMap.cast<String, dynamic>());
-      });
-
-  void addNetworkChangedListener(void Function(Map<String, dynamic>) listener) =>
-      _networkEventChannel.receiveBroadcastStream().listen((event) {
         Map<dynamic, dynamic> eventMap = event;
         listener(eventMap.cast<String, dynamic>());
       });
