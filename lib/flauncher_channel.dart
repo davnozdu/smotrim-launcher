@@ -76,6 +76,10 @@ class FLauncherChannel {
   Future<bool> factoryReset() async =>
       await _methodChannel.invokeMethod('factoryReset') ?? false;
 
+  /// Package to force-launch on boot in hotel mode ("" clears it).
+  Future<bool> setHotelAutoLaunch(String packageName) async =>
+      await _methodChannel.invokeMethod('setHotelAutoLaunch', packageName) ?? false;
+
   Future<bool> isDefaultLauncher() async => await _methodChannel.invokeMethod('isDefaultLauncher');
 
   Future<bool> checkForGetContentAvailability() async =>

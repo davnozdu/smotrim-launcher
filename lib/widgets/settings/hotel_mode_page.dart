@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:flauncher/l10n/app_localizations.dart';
 import 'package:flauncher/providers/apps_service.dart';
 import 'package:flauncher/providers/hotel_mode_service.dart';
+import 'package:flauncher/models/app.dart';
 import 'package:flauncher/widgets/rounded_switch_list_tile.dart';
 import 'focusable_settings_tile.dart';
 import 'pin_pad.dart';
@@ -50,6 +51,45 @@ class _HotelModePageState extends State<HotelModePage> {
             if (dialogContext.mounted) Navigator.of(dialogContext).pop();
           }),
         ),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
+  String? _autoLaunchName(List<App> apps, String? pkg) {
+    if (pkg == null) return null;
+    for (final a in apps) {
+      if (a.packageName == pkg) return a.name;
+    }
+    return pkg;
+  }
+
+  Future<void> _pickAutoLaunch(List<App> apps) async {
+    final l = AppLocalizations.of(context)!;
+    final hotel = context.read<HotelModeService>();
+    // Only apps currently ticked as allowed can be auto-launched.
+    final choices = apps.where((a) => _allowed.contains(a.packageName)).toList();
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(l.hotelAutoLaunch),
+        children: [
+          SimpleDialogOption(
+            onPressed: () {
+              hotel.setAutoLaunch(null);
+              Navigator.of(dialogContext).pop();
+            },
+            child: Text(l.hotelAutoLaunchNone),
+          ),
+          for (final a in choices)
+            SimpleDialogOption(
+              onPressed: () {
+                hotel.setAutoLaunch(a.packageName);
+                Navigator.of(dialogContext).pop();
+              },
+              child: Text(a.name),
+            ),
+        ],
       ),
     );
     if (mounted) setState(() {});
@@ -106,6 +146,13 @@ class _HotelModePageState extends State<HotelModePage> {
                   trailing: Text(hotel.hasPin ? l.statusGranted : "—",
                       style: TextStyle(color: hotel.hasPin ? Colors.green : Colors.orange)),
                   onPressed: _setPin,
+                ),
+                FocusableSettingsTile(
+                  leading: const Icon(Icons.play_circle_outline),
+                  title: Text(l.hotelAutoLaunch, style: Theme.of(context).textTheme.bodyMedium),
+                  trailing: Text(_autoLaunchName(apps, hotel.autoLaunchPackage) ?? l.hotelAutoLaunchNone,
+                      style: Theme.of(context).textTheme.bodySmall),
+                  onPressed: () => _pickAutoLaunch(apps),
                 ),
                 const Divider(),
                 Padding(

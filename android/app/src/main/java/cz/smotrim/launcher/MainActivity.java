@@ -104,6 +104,7 @@ public class MainActivity extends FlutterActivity {
                 case "disableHotelMode" -> result.success(disableHotelMode());
                 case "clearGuestData" -> result.success(clearGuestData(call.arguments()));
                 case "factoryReset" -> result.success(factoryReset());
+                case "setHotelAutoLaunch" -> result.success(setHotelAutoLaunch(call.arguments()));
                 case "isDefaultLauncher" -> result.success(isDefaultLauncher());
                 case "checkForGetContentAvailability" -> result.success(checkForGetContentAvailability());
                 case "startAmbientMode" -> result.success(startAmbientMode());
@@ -403,8 +404,9 @@ public class MainActivity extends FlutterActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        maybeAutostartPlayer();
         maybeReenterHotelLock();
+        maybeHotelAutoLaunch();
+        maybeAutostartPlayer();
     }
 
     // ===================== Режим отеля (Device Owner / kiosk) =====================
@@ -552,9 +554,43 @@ public class MainActivity extends FlutterActivity {
     // (background-activity-launch is blocked). This launcher IS the home app and
     // is allow-listed to start activities, so on boot we launch the player when
     // its "autostart on boot" setting is enabled.
+    private boolean hotelAutoLaunched = false;
+    private static final String HOTEL_AUTOLAUNCH = "autolaunch";
+
+    private boolean setHotelAutoLaunch(String pkg) {
+        getSharedPreferences(HOTEL_PREFS, MODE_PRIVATE).edit()
+                .putString(HOTEL_AUTOLAUNCH, pkg == null ? "" : pkg).apply();
+        return true;
+    }
+
+    // In hotel mode, force-launch the admin's chosen app right after boot so the
+    // guest always lands on it (e.g. the TV app on its last channel).
+    private void maybeHotelAutoLaunch() {
+        if (hotelAutoLaunched) return;
+        hotelAutoLaunched = true;
+        if (android.os.SystemClock.elapsedRealtime() > 120000) return; // only right after a real boot
+        SharedPreferences p = getSharedPreferences(HOTEL_PREFS, MODE_PRIVATE);
+        if (!p.getBoolean(HOTEL_ACTIVE, false)) return;
+        String pkg = p.getString(HOTEL_AUTOLAUNCH, "");
+        if (pkg == null || pkg.isEmpty()) return;
+        try {
+            PackageManager pm = getPackageManager();
+            Intent intent = pm.getLeanbackLaunchIntentForPackage(pkg);
+            if (intent == null) intent = pm.getLaunchIntentForPackage(pkg);
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     private void maybeAutostartPlayer() {
         if (playerAutostartChecked) return;
         playerAutostartChecked = true;
+        // In hotel mode the admin's auto-launch choice wins over player autostart.
+        SharedPreferences hp = getSharedPreferences(HOTEL_PREFS, MODE_PRIVATE);
+        if (hp.getBoolean(HOTEL_ACTIVE, false) && !hp.getString(HOTEL_AUTOLAUNCH, "").isEmpty()) return;
         // Only right after a real boot — so returning to HOME later (or the
         // launcher being recreated) doesn't keep re-launching the player.
         if (android.os.SystemClock.elapsedRealtime() > 120000) return;

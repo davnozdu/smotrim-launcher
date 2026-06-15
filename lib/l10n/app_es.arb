@@ -233,5 +233,7 @@
     "hotelFactoryResetWarn": "El dispositivo se restablecerá por completo a los ajustes de fábrica. No se puede deshacer.",
     "hotelCancel": "Cancelar",
     "hotelReset": "Restablecer",
+    "hotelAutoLaunch": "Iniciar app automáticamente al arrancar",
+    "hotelAutoLaunchNone": "Ninguna",
     "install": "Instalar"
 }

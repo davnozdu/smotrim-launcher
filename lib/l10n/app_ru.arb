@@ -237,5 +237,7 @@
     "hotelFactoryResetWarn": "Устройство будет полностью сброшено до заводских настроек. Это необратимо.",
     "hotelCancel": "Отмена",
     "hotelReset": "Сбросить",
+    "hotelAutoLaunch": "Автозапуск приложения при включении",
+    "hotelAutoLaunchNone": "Нет",
     "install": "Установить"
 }

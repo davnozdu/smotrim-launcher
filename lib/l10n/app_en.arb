@@ -237,5 +237,7 @@
     "hotelFactoryResetWarn": "The device will be fully reset to factory settings. This can't be undone.",
     "hotelCancel": "Cancel",
     "hotelReset": "Reset",
+    "hotelAutoLaunch": "Auto-launch app on boot",
+    "hotelAutoLaunchNone": "None",
     "install": "Install"
 }

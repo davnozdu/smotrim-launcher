@@ -24,6 +24,7 @@ class HotelModeService extends ChangeNotifier {
   static const _kPinHash = "hotel_pin_hash";
   static const _kSalt = "hotel_salt";
   static const _kAllowed = "hotel_allowed";
+  static const _kAutoLaunch = "hotel_autolaunch"; // app force-launched on boot
   static const _kKeep = "hotel_keep_on_reset"; // packages NOT wiped on checkout
   static const _kFails = "hotel_fails";
   static const _kLockoutUntil = "hotel_lockout_until";
@@ -48,6 +49,18 @@ class HotelModeService extends ChangeNotifier {
   bool get enabled => _prefs.getBool(_kEnabled) ?? false;
   bool get hasPin => (_prefs.getString(_kPinHash) ?? "").isNotEmpty;
   List<String> get allowedPackages => _prefs.getStringList(_kAllowed) ?? const [];
+
+  /// App force-launched on boot in hotel mode (null = none).
+  String? get autoLaunchPackage {
+    final p = _prefs.getString(_kAutoLaunch) ?? "";
+    return p.isEmpty ? null : p;
+  }
+
+  Future<void> setAutoLaunch(String? pkg) async {
+    await _prefs.setString(_kAutoLaunch, pkg ?? "");
+    await _channel.setHotelAutoLaunch(pkg ?? "");
+    notifyListeners();
+  }
 
   Future<bool> isDeviceOwner() => _channel.isDeviceOwner();
 
@@ -101,6 +114,7 @@ class HotelModeService extends ChangeNotifier {
   /// Returns true if the native Device-Owner policy was applied.
   Future<bool> enable(List<String> allowed) async {
     await _prefs.setStringList(_kAllowed, allowed);
+    await _channel.setHotelAutoLaunch(autoLaunchPackage ?? "");
     final applied = await _channel.enableHotelMode(allowed);
     await _prefs.setBool(_kEnabled, true);
     notifyListeners();
