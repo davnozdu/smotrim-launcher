@@ -21,6 +21,7 @@ import 'dart:async';
 import 'package:flauncher/actions.dart';
 import 'package:flauncher/app_image_type.dart';
 import 'package:flauncher/providers/apps_service.dart';
+import 'package:flauncher/providers/hotel_mode_service.dart';
 import 'package:flauncher/providers/settings_service.dart';
 import 'package:flauncher/widgets/application_info_panel.dart';
 import 'package:flauncher/widgets/focus_keyboard_listener.dart';
@@ -677,6 +678,9 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
   }
 
   KeyEventResult _onLongPress(BuildContext context, LogicalKeyboardKey? key) {
+    // In hotel mode the app-info panel (App info / Uninstall / reorder) is an
+    // escape route to system settings — block it entirely for guests.
+    if (context.read<HotelModeService>().enabled) return KeyEventResult.ignored;
     if (!_moving && (key == null || longPressableKeys.contains(key))) {
       _showPanel(context);
       return KeyEventResult.handled;

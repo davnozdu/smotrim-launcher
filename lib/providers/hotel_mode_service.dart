@@ -28,9 +28,9 @@ class HotelModeService extends ChangeNotifier {
   static const _kFails = "hotel_fails";
   static const _kLockoutUntil = "hotel_lockout_until";
 
-  /// Service master code for a forgotten PIN. Change before mass deployment.
-  static const String masterCode = "27182818";
-
+  // No compiled-in master/back-door code exists by design: the only way into
+  // the admin panel is the owner-set 8-digit PIN. A forgotten PIN can only be
+  // recovered by factory-resetting (re-provisioning) the device.
   static const int _maxFails = 5;
   static const Duration _lockoutDuration = Duration(minutes: 1);
 
@@ -62,7 +62,6 @@ class HotelModeService extends ChangeNotifier {
   }
 
   bool _pinMatches(String pin) {
-    if (pin == masterCode) return true;
     final hash = _prefs.getString(_kPinHash) ?? "";
     if (hash.isEmpty) return false;
     final salt = _prefs.getString(_kSalt) ?? "";

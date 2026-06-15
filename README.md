@@ -70,6 +70,35 @@ On Chromecast with Google TV (and possibly others), the "YouTube" remote button 
 ## Wallpaper
 Because Android's `WallpaperManager` is not available on some Android TV devices, the launcher implements its own wallpaper management. Changing the wallpaper requires a file explorer installed on the device to pick a file.
 
+## Hotel mode (kiosk)
+
+Hotel mode turns the box into a locked kiosk: the guest can only open the apps you whitelist (TV, YouTube, …). Google Play is hidden, system settings are unreachable, and factory reset / safe boot / ADB / uninstall are blocked. The only way into the admin panel is the owner-set **8-digit PIN** — there is **no hidden code or back-door of any kind**. A forgotten PIN can only be recovered by factory-resetting (re-provisioning) the device.
+
+### One-time provisioning (required for real enforcement)
+Hotel mode is enforced only when this launcher is the **Device Owner**. Set it once on a **freshly reset** device that has **no Google account added yet**:
+
+```shell
+# Enable ADB (Settings → System → Developer options → USB/Network debugging),
+# then from a computer:
+adb connect <tv-ip>:5555
+adb shell dpm set-device-owner cz.smotrim.launcher/.HotelAdminReceiver
+```
+
+You should see `Success: Device owner set ...`. If it fails with "already has an account/owner", factory-reset the TV first and run it before signing in.
+
+> Without this step hotel mode is **cosmetic only** (it filters the app list and locks our settings, but Play Store and system settings are **not** blocked).
+
+### Setup & daily use
+1. Settings → **Hotel mode** → set the 8-digit PIN, tick the apps a guest may use, then **Turn on hotel mode**.
+2. While locked, opening Settings shows **only** the unlock screen.
+3. Enter the PIN to reach the **admin panel**: reset guest data, leave hotel mode, or factory-reset the device.
+4. **Checkout reset** wipes only the data of the apps you choose (e.g. clears the YouTube login) — toggle off the apps to keep signed in (e.g. the TV app). Hotel mode, the PIN and the whitelist are preserved.
+
+### Security notes
+- The PIN is stored salted-SHA-256 (never in clear text); 5 wrong tries trigger a 1-minute lockout. There is no master/service code in the build.
+- Enforcement is at the OS level (Device Owner lock-task), not just in the UI — even a UI slip cannot launch Settings/Play because they aren't whitelisted.
+- After provisioning, hotel mode disables developer features (ADB) so the data can't be cleared over `adb`. Keep the bootloader locked; no Android app can prevent a firmware re-flash on an unlocked bootloader.
+
 ## Building
 APKs are built and signed automatically on **GitHub Actions** (`.github/workflows/build.yml`). Release builds are signed with a persistent key stored in repository secrets, so updates install over previous versions.
 
