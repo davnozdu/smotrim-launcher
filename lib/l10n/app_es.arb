@@ -207,5 +207,8 @@
     "alreadyUpToDate": "Tiene la última versión",
     "updateCheckFailed": "No se pudieron comprobar las actualizaciones. Inténtelo más tarde.",
     "downloadFailed": "Error de descarga. Inténtelo más tarde.",
+    "appStore": "Tienda de aplicaciones",
+    "appStoreShort": "AppHub",
+    "appStoreDownloading": "Descargando aplicación…",
     "install": "Instalar"
 }

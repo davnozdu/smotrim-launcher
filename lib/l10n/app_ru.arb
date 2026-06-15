@@ -211,5 +211,8 @@
     "alreadyUpToDate": "У вас последняя версия",
     "updateCheckFailed": "Не удалось проверить обновления. Попробуйте позже.",
     "downloadFailed": "Не удалось загрузить файл. Попробуйте позже.",
+    "appStore": "Магазин приложений",
+    "appStoreShort": "AppHub",
+    "appStoreDownloading": "Загрузка приложения…",
     "install": "Установить"
 }

@@ -30,6 +30,7 @@ import 'package:flauncher/widgets/smotrim_banner.dart';
 import 'package:flauncher/widgets/subscription_button.dart';
 import 'package:flauncher/widgets/player_install_button.dart';
 import 'package:flauncher/widgets/hls_proxy_install_button.dart';
+import 'package:flauncher/widgets/app_store_button.dart';
 import 'package:flauncher/widgets/update_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -148,16 +149,25 @@ class _FLauncherState extends State<FLauncher> {
 
     // "Renew subscription" + "Install/Update player" at the very bottom, under
     // all the apps, side by side with a small gap (wraps on narrow screens).
-    children.add(const Padding(
-      padding: EdgeInsets.only(top: 16, bottom: 8),
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 12,
-        children: [
-          SubscriptionButton(),
-          PlayerInstallButton(),
-          HlsProxyInstallButton(),
-        ],
+    children.add(Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      // Keep the action buttons on one row when there's room; on a narrow row
+      // the app-store button falls back to its short "AppHub" label to help
+      // everything fit before the Wrap is forced to break onto a second line.
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compactStore = constraints.maxWidth < 1500;
+          return Wrap(
+            spacing: 16,
+            runSpacing: 12,
+            children: [
+              const SubscriptionButton(),
+              const PlayerInstallButton(),
+              const HlsProxyInstallButton(),
+              AppStoreButton(compact: compactStore),
+            ],
+          );
+        },
       ),
     ));
 

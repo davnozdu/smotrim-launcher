@@ -211,5 +211,8 @@
     "alreadyUpToDate": "You have the latest version",
     "updateCheckFailed": "Couldn't check for updates. Please try again later.",
     "downloadFailed": "Download failed. Please try again later.",
+    "appStore": "App Store",
+    "appStoreShort": "AppHub",
+    "appStoreDownloading": "Downloading app…",
     "install": "Install"
 }
