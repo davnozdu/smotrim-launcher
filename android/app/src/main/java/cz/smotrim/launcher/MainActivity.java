@@ -20,7 +20,11 @@ package cz.smotrim.launcher;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.*;
+import android.app.admin.DevicePolicyManager;
+import android.app.ActivityManager;
+import android.os.UserManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
@@ -95,6 +99,9 @@ public class MainActivity extends FlutterActivity {
                 case "installApk" -> result.success(installApk(call.arguments()));
                 case "isAppInstalled" -> result.success(isAppInstalled(call.arguments()));
                 case "getAppVersion" -> result.success(getAppVersion(call.arguments()));
+                case "isDeviceOwner" -> result.success(isDeviceOwner());
+                case "enableHotelMode" -> result.success(enableHotelMode(call.arguments()));
+                case "disableHotelMode" -> result.success(disableHotelMode());
                 case "isDefaultLauncher" -> result.success(isDefaultLauncher());
                 case "checkForGetContentAvailability" -> result.success(checkForGetContentAvailability());
                 case "startAmbientMode" -> result.success(startAmbientMode());
@@ -395,6 +402,114 @@ public class MainActivity extends FlutterActivity {
     protected void onResume() {
         super.onResume();
         maybeAutostartPlayer();
+        maybeReenterHotelLock();
+    }
+
+    // ===================== Режим отеля (Device Owner / kiosk) =====================
+    private static final String HOTEL_PREFS = "hotel_prefs";
+    private static final String HOTEL_ACTIVE = "active";
+
+    private boolean isDeviceOwner() {
+        try {
+            DevicePolicyManager dpm = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
+            return dpm != null && dpm.isDeviceOwnerApp(getPackageName());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** Turns this box into a kiosk pinned to [allowed] + the launcher itself. */
+    private boolean enableHotelMode(java.util.List<String> allowed) {
+        try {
+            DevicePolicyManager dpm = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
+            ComponentName admin = HotelAdminReceiver.getComponentName(this);
+            if (dpm == null || !dpm.isDeviceOwnerApp(getPackageName())) return false;
+
+            java.util.List<String> lock = new java.util.ArrayList<>();
+            lock.add(getPackageName());
+            if (allowed != null) lock.addAll(allowed);
+            dpm.setLockTaskPackages(admin, lock.toArray(new String[0]));
+
+            // Keep this launcher the persistent HOME so the box can't escape it.
+            IntentFilter home = new IntentFilter(Intent.ACTION_MAIN);
+            home.addCategory(Intent.CATEGORY_HOME);
+            home.addCategory(Intent.CATEGORY_DEFAULT);
+            dpm.addPersistentPreferredActivity(admin, home, new ComponentName(this, MainActivity.class));
+
+            // Hide Google Play and block what destabilises a kiosk.
+            trySetHidden(dpm, admin, "com.android.vending", true);
+            addRestriction(dpm, admin, UserManager.DISALLOW_FACTORY_RESET);
+            addRestriction(dpm, admin, UserManager.DISALLOW_SAFE_BOOT);
+            addRestriction(dpm, admin, UserManager.DISALLOW_ADD_USER);
+            addRestriction(dpm, admin, UserManager.DISALLOW_DEBUGGING_FEATURES);
+            addRestriction(dpm, admin, UserManager.DISALLOW_UNINSTALL_APPS);
+            addRestriction(dpm, admin, UserManager.DISALLOW_APPS_CONTROL);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                dpm.setLockTaskFeatures(admin,
+                        DevicePolicyManager.LOCK_TASK_FEATURE_HOME
+                                | DevicePolicyManager.LOCK_TASK_FEATURE_GLOBAL_ACTIONS);
+            }
+
+            getSharedPreferences(HOTEL_PREFS, MODE_PRIVATE).edit().putBoolean(HOTEL_ACTIVE, true).apply();
+            startLockTaskSafely();
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private boolean disableHotelMode() {
+        getSharedPreferences(HOTEL_PREFS, MODE_PRIVATE).edit().putBoolean(HOTEL_ACTIVE, false).apply();
+        try { stopLockTask(); } catch (Exception ignored) {}
+        try {
+            DevicePolicyManager dpm = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
+            ComponentName admin = HotelAdminReceiver.getComponentName(this);
+            if (dpm != null && dpm.isDeviceOwnerApp(getPackageName())) {
+                try { dpm.setLockTaskPackages(admin, new String[]{}); } catch (Exception ignored) {}
+                trySetHidden(dpm, admin, "com.android.vending", false);
+                clearRestriction(dpm, admin, UserManager.DISALLOW_FACTORY_RESET);
+                clearRestriction(dpm, admin, UserManager.DISALLOW_SAFE_BOOT);
+                clearRestriction(dpm, admin, UserManager.DISALLOW_ADD_USER);
+                clearRestriction(dpm, admin, UserManager.DISALLOW_DEBUGGING_FEATURES);
+                clearRestriction(dpm, admin, UserManager.DISALLOW_UNINSTALL_APPS);
+                clearRestriction(dpm, admin, UserManager.DISALLOW_APPS_CONTROL);
+            }
+        } catch (Exception ignored) {}
+        return true;
+    }
+
+    private void maybeReenterHotelLock() {
+        try {
+            if (!getSharedPreferences(HOTEL_PREFS, MODE_PRIVATE).getBoolean(HOTEL_ACTIVE, false)) return;
+            if (isDeviceOwner()) startLockTaskSafely();
+        } catch (Exception ignored) {}
+    }
+
+    private void startLockTaskSafely() {
+        try {
+            ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            boolean inLock;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                inLock = am.getLockTaskModeState() != ActivityManager.LOCK_TASK_MODE_NONE;
+            } else {
+                inLock = am.isInLockTaskMode();
+            }
+            if (!inLock) startLockTask();
+        } catch (Exception ignored) {}
+    }
+
+    private void addRestriction(DevicePolicyManager dpm, ComponentName a, String r) {
+        try { dpm.addUserRestriction(a, r); } catch (Exception ignored) {}
+    }
+
+    private void clearRestriction(DevicePolicyManager dpm, ComponentName a, String r) {
+        try { dpm.clearUserRestriction(a, r); } catch (Exception ignored) {}
+    }
+
+    private void trySetHidden(DevicePolicyManager dpm, ComponentName a, String pkg, boolean hidden) {
+        try { dpm.setApplicationHidden(a, pkg, hidden); } catch (Exception ignored) {}
     }
 
     // The player can't self-start from its boot receiver on Android 12+/14

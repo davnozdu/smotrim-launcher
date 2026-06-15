@@ -32,6 +32,10 @@ import 'package:flauncher/widgets/settings/brightness_settings_page.dart';
 import 'package:flauncher/widgets/settings/misc_panel_page.dart';
 import 'package:flauncher/widgets/settings/interface_settings_page.dart';
 import 'package:flauncher/widgets/settings/general_settings_page.dart';
+import 'package:flauncher/widgets/settings/hotel_mode_page.dart';
+import 'package:flauncher/widgets/settings/hotel_unlock_page.dart';
+import 'package:flauncher/providers/hotel_mode_service.dart';
+import 'package:provider/provider.dart';
 import 'package:flauncher/widgets/settings/screensaver_clock_style_page.dart';
 import 'package:flauncher/widgets/settings/themes_page.dart';
 import 'package:flauncher/widgets/settings/accessibility_page.dart';
@@ -52,6 +56,10 @@ class _SettingsPanelState extends State<SettingsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    // While hotel mode is locked, Settings exposes ONLY the unlock screen —
+    // every route resolves to it, so the rest of the menu is unreachable.
+    final bool locked = context.read<HotelModeService>().enabled;
+
     return WillPopScope(
       onWillPop: () async => !await _navigatorKey.currentState!.maybePop(),
       child: Scaffold(
@@ -69,9 +77,18 @@ class _SettingsPanelState extends State<SettingsPanel> {
               isRightSide: false,
               child: Navigator(
                 key: _navigatorKey,
-                initialRoute: widget.initialRoute ?? SettingsPanelPage.routeName,
+                initialRoute: locked
+                    ? HotelUnlockPage.routeName
+                    : (widget.initialRoute ?? SettingsPanelPage.routeName),
                 onGenerateRoute: (settings) {
+                  if (locked) {
+                    return _FastPageRoute(builder: (_) => const HotelUnlockPage());
+                  }
                   switch (settings.name) {
+                    case HotelModePage.routeName:
+                      return _FastPageRoute(builder: (_) => const HotelModePage());
+                    case HotelUnlockPage.routeName:
+                      return _FastPageRoute(builder: (_) => const HotelUnlockPage());
                     case SettingsPanelPage.routeName:
                       return _FastPageRoute(builder: (_) => SettingsPanelPage());
                     case GeneralSettingsPage.routeName:

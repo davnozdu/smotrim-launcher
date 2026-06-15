@@ -215,5 +215,16 @@
     "appStoreShort": "AppHub",
     "appStoreDownloading": "Downloading app…",
     "pressBackAgainToExit": "Press Back again to exit",
+    "hotelMode": "Hotel mode",
+    "hotelModeDesc": "Kiosk: only allowed apps, no access to system settings. Enforced when the launcher is a Device Owner.",
+    "hotelSetPin": "PIN code (8 digits)",
+    "hotelAllowedApps": "Allowed apps",
+    "hotelActivate": "Turn on hotel mode",
+    "hotelUnlock": "Unlock",
+    "hotelEnterPin": "Enter the PIN code",
+    "hotelWrongPin": "Wrong PIN code",
+    "hotelLockedOut": "Too many attempts. Please wait.",
+    "hotelNeedDeviceOwner": "This device isn't provisioned as Device Owner — the kiosk won't be enforced.",
+    "hotelPinRequired": "Set an 8-digit PIN first",
     "install": "Install"
 }

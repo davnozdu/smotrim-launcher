@@ -26,6 +26,7 @@ dependencies:
   pool: ^1.5.2
   qr_flutter: ^4.1.0
   flutter_inappwebview: ^6.1.5
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:

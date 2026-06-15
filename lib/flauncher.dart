@@ -20,6 +20,8 @@
 import 'package:flauncher/actions.dart';
 import 'package:flauncher/custom_traversal_policy.dart';
 import 'package:flauncher/providers/apps_service.dart';
+import 'package:flauncher/providers/hotel_mode_service.dart';
+import 'package:flauncher/models/app.dart';
 import 'package:flauncher/providers/launcher_state.dart';
 import 'package:flauncher/providers/wallpaper_service.dart';
 import 'package:flauncher/widgets/apps_grid.dart';
@@ -78,10 +80,10 @@ class _FLauncherState extends State<FLauncher> {
               bottomNavigationBar: const SmotrimBanner(),
               body: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Consumer<AppsService>(
-                  builder: (context, appsService, _) {
+                child: Consumer2<AppsService, HotelModeService>(
+                  builder: (context, appsService, hotel, _) {
                     if (appsService.initialized) {
-                      return SingleChildScrollView(child: _sections(appsService.launcherSections));
+                      return SingleChildScrollView(child: _sections(appsService.launcherSections, hotel));
                     }
                     else {
                       return _emptyState(context);
@@ -96,14 +98,16 @@ class _FLauncherState extends State<FLauncher> {
     ),
   );
 
-  Widget _sections(List<LauncherSection> sections) {
+  Widget _sections(List<LauncherSection> sections, HotelModeService hotel) {
+    final bool locked = hotel.enabled;
     // Update prompt above the categories (Row keeps its height bounded inside
-    // the scroll view; never use Align here).
+    // the scroll view; never use Align here). Hidden in hotel mode.
     List<Widget> children = [
-      const Padding(
-        padding: EdgeInsets.only(top: 8),
-        child: Row(children: [UpdateBanner()]),
-      ),
+      if (!locked)
+        const Padding(
+          padding: EdgeInsets.only(top: 8),
+          child: Row(children: [UpdateBanner()]),
+        ),
     ];
     bool firstCategoryFound = false;
 
@@ -111,11 +115,18 @@ class _FLauncherState extends State<FLauncher> {
       final Key sectionKey = Key(section.id.toString());
 
       if (section is LauncherSpacer) {
-        children.add(SizedBox(key: sectionKey, height: section.height.toDouble()));
+        if (!locked) children.add(SizedBox(key: sectionKey, height: section.height.toDouble()));
         continue;
       }
 
       Category category = section as Category;
+
+      // In hotel mode only whitelisted apps are shown; empty categories vanish.
+      final List<App> apps = locked
+          ? category.applications.where((a) => hotel.allowedPackages.contains(a.packageName)).toList()
+          : category.applications;
+      if (locked && apps.isEmpty) continue;
+
       Widget categoryWidget;
 
       // Pass isFirstSection only to the first category found
@@ -127,7 +138,7 @@ class _FLauncherState extends State<FLauncher> {
           categoryWidget = CategoryRow(
               key: sectionKey,
               category: category,
-              applications: category.applications,
+              applications: apps,
               isFirstSection: isFirstSection
           );
           break; // Added break
@@ -135,7 +146,7 @@ class _FLauncherState extends State<FLauncher> {
           categoryWidget = AppsGrid(
               key: sectionKey,
               category: category,
-              applications: category.applications,
+              applications: apps,
               isFirstSection: isFirstSection
           );
           break; // Added break
@@ -145,6 +156,12 @@ class _FLauncherState extends State<FLauncher> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: categoryWidget
       ));
+    }
+
+    // Action buttons (subscription / installers / store) are hidden in hotel
+    // mode — a guest must not install or change anything.
+    if (locked) {
+      return Column(children: children);
     }
 
     // "Renew subscription" + "Install/Update player" at the very bottom, under

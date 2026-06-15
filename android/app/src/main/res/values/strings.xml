@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hotel_admin_description">Позволяет включить режим отеля (киоск): только разрешённые приложения, без доступа к системным настройкам.</string>
+</resources>

@@ -22,6 +22,7 @@ import 'package:flauncher/widgets/settings/applications_panel_page.dart';
 import 'package:flauncher/widgets/settings/flauncher_about_dialog.dart';
 import 'package:flauncher/widgets/settings/interface_settings_page.dart';
 import 'package:flauncher/widgets/settings/general_settings_page.dart';
+import 'package:flauncher/widgets/settings/hotel_mode_page.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
@@ -64,6 +65,11 @@ class SettingsPanelPage extends StatelessWidget {
                   leading: const Icon(Icons.accessibility_new),
                   title: Text(localizations.accessibility, style: Theme.of(context).textTheme.bodyMedium),
                   onPressed: () => Navigator.of(context).pushNamed(AccessibilityPage.routeName),
+                ),
+                FocusableSettingsTile(
+                  leading: const Icon(Icons.meeting_room_outlined),
+                  title: Text(localizations.hotelMode, style: Theme.of(context).textTheme.bodyMedium),
+                  onPressed: () => Navigator.of(context).pushNamed(HotelModePage.routeName),
                 ),
                 const Divider(),
                 FocusableSettingsTile(

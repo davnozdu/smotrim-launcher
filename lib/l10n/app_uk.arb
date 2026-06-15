@@ -215,5 +215,16 @@
     "appStoreShort": "AppHub",
     "appStoreDownloading": "Завантаження застосунку…",
     "pressBackAgainToExit": "Натисніть ще раз для виходу",
+    "hotelMode": "Режим готелю",
+    "hotelModeDesc": "Кіоск: лише дозволені застосунки, без доступу до системних налаштувань. Примусово працює, коли лаунчер — Device Owner.",
+    "hotelSetPin": "PIN-код (8 цифр)",
+    "hotelAllowedApps": "Дозволені застосунки",
+    "hotelActivate": "Увімкнути режим готелю",
+    "hotelUnlock": "Розблокувати",
+    "hotelEnterPin": "Введіть PIN-код",
+    "hotelWrongPin": "Невірний PIN-код",
+    "hotelLockedOut": "Забагато спроб. Зачекайте.",
+    "hotelNeedDeviceOwner": "Пристрій не підготовлено як Device Owner — кіоск не буде примусовим.",
+    "hotelPinRequired": "Спочатку задайте 8-значний PIN-код",
     "install": "Встановити"
 }

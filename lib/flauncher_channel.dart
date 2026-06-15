@@ -58,6 +58,16 @@ class FLauncherChannel {
   Future<String?> getAppVersion(String packageName) async =>
       await _methodChannel.invokeMethod('getAppVersion', packageName);
 
+  Future<bool> isDeviceOwner() async =>
+      await _methodChannel.invokeMethod('isDeviceOwner') ?? false;
+
+  /// Enables hotel-mode kiosk pinned to [allowedPackages] (Device Owner only).
+  Future<bool> enableHotelMode(List<String> allowedPackages) async =>
+      await _methodChannel.invokeMethod('enableHotelMode', allowedPackages) ?? false;
+
+  Future<bool> disableHotelMode() async =>
+      await _methodChannel.invokeMethod('disableHotelMode') ?? false;
+
   Future<bool> isDefaultLauncher() async => await _methodChannel.invokeMethod('isDefaultLauncher');
 
   Future<bool> checkForGetContentAvailability() async =>

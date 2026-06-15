@@ -215,5 +215,16 @@
     "appStoreShort": "AppHub",
     "appStoreDownloading": "Загрузка приложения…",
     "pressBackAgainToExit": "Нажмите повторно для выхода",
+    "hotelMode": "Режим отеля",
+    "hotelModeDesc": "Киоск: только разрешённые приложения, без доступа к системным настройкам. Принудительно работает, когда лаунчер — Device Owner.",
+    "hotelSetPin": "ПИН-код (8 цифр)",
+    "hotelAllowedApps": "Разрешённые приложения",
+    "hotelActivate": "Включить режим отеля",
+    "hotelUnlock": "Разблокировать",
+    "hotelEnterPin": "Введите ПИН-код",
+    "hotelWrongPin": "Неверный ПИН-код",
+    "hotelLockedOut": "Слишком много попыток. Подождите.",
+    "hotelNeedDeviceOwner": "Устройство не подготовлено как Device Owner — киоск не будет принудительным.",
+    "hotelPinRequired": "Сначала задайте 8-значный ПИН-код",
     "install": "Установить"
 }

@@ -211,5 +211,16 @@
     "appStoreShort": "AppHub",
     "appStoreDownloading": "Descargando aplicación…",
     "pressBackAgainToExit": "Pulse Atrás de nuevo para salir",
+    "hotelMode": "Modo hotel",
+    "hotelModeDesc": "Quiosco: solo apps permitidas, sin acceso a los ajustes del sistema. Se aplica cuando el launcher es Device Owner.",
+    "hotelSetPin": "Código PIN (8 dígitos)",
+    "hotelAllowedApps": "Apps permitidas",
+    "hotelActivate": "Activar modo hotel",
+    "hotelUnlock": "Desbloquear",
+    "hotelEnterPin": "Introduzca el PIN",
+    "hotelWrongPin": "PIN incorrecto",
+    "hotelLockedOut": "Demasiados intentos. Espere.",
+    "hotelNeedDeviceOwner": "Este dispositivo no es Device Owner: el quiosco no se aplicará.",
+    "hotelPinRequired": "Primero defina un PIN de 8 dígitos",
     "install": "Instalar"
 }
