@@ -8,7 +8,6 @@
  * (at your option) any later version.
  */
 
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -49,15 +48,6 @@ class _AppStorePageState extends State<AppStorePage> {
   bool _pageLoading = true;
   bool _downloading = false;
   double _progress = 0;
-
-  bool _exitArmed = false;
-  Timer? _exitTimer;
-
-  @override
-  void dispose() {
-    _exitTimer?.cancel();
-    super.dispose();
-  }
 
   Future<void> _downloadAndInstall(String url, String? suggestedName) async {
     if (_downloading) return;
@@ -208,43 +198,17 @@ class _AppStorePageState extends State<AppStorePage> {
     );
   }
 
+  // The site is the single owner of Back: it closes its exit dialog / detail
+  // card, or shows the "Exit the store?" confirm. We just relay Back to it and
+  // never pop here — leaving happens only via the `exitStore` JS handler. The
+  // pop fallback covers the page not being ready yet.
   Future<void> _handleBack() async {
-    // 1) Let the page close an open detail card first (Back = leave the card,
-    //    back to the store's main screen).
     try {
       final handled = await _controller?.evaluateJavascript(
-          source: "window.__hubBack ? window.__hubBack() : false");
-      if (handled == true) {
-        _disarmExit();
-        return;
-      }
+          source: "window.__hubBack ? (window.__hubBack(), true) : false");
+      if (handled == true) return;
     } catch (_) {}
-    // 2) WebView history (e.g. language sub-navigation).
-    if (await (_controller?.canGoBack() ?? Future.value(false))) {
-      await _controller?.goBack();
-      _disarmExit();
-      return;
-    }
-    // 3) At the store's main screen: a second Back exits to the launcher shell.
-    if (_exitArmed) {
-      if (mounted) Navigator.of(context).pop();
-      return;
-    }
-    _exitArmed = true;
-    final l = AppLocalizations.of(context)!;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(
-        content: Text(l.pressBackAgainToExit),
-        duration: const Duration(milliseconds: 2500),
-      ));
-    _exitTimer?.cancel();
-    _exitTimer = Timer(const Duration(milliseconds: 2500), () => _exitArmed = false);
-  }
-
-  void _disarmExit() {
-    _exitArmed = false;
-    _exitTimer?.cancel();
+    if (mounted) Navigator.of(context).pop();
   }
 
   // D-pad keys → forwarded into the page as a synthetic keydown on `window`.
@@ -326,7 +290,18 @@ class _AppStorePageState extends State<AppStorePage> {
                   }
                   return NavigationActionPolicy.ALLOW;
                 },
-                onWebViewCreated: (controller) => _controller = controller,
+                onWebViewCreated: (controller) {
+                  _controller = controller;
+                  // The site owns Back; it asks us to leave only when the user
+                  // confirms "Yes" in its exit dialog.
+                  controller.addJavaScriptHandler(
+                    handlerName: "exitStore",
+                    callback: (_) {
+                      if (mounted) Navigator.of(context).pop();
+                      return null;
+                    },
+                  );
+                },
                 onLoadStart: (controller, url) {
                   if (mounted) setState(() => _pageLoading = true);
                 },
