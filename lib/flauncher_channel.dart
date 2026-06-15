@@ -68,6 +68,14 @@ class FLauncherChannel {
   Future<bool> disableHotelMode() async =>
       await _methodChannel.invokeMethod('disableHotelMode') ?? false;
 
+  /// Wipes per-app data of the given packages (Device Owner, API 28+).
+  Future<bool> clearGuestData(List<String> packages) async =>
+      await _methodChannel.invokeMethod('clearGuestData', packages) ?? false;
+
+  /// Full factory reset of the device (Device Owner). Irreversible.
+  Future<bool> factoryReset() async =>
+      await _methodChannel.invokeMethod('factoryReset') ?? false;
+
   Future<bool> isDefaultLauncher() async => await _methodChannel.invokeMethod('isDefaultLauncher');
 
   Future<bool> checkForGetContentAvailability() async =>

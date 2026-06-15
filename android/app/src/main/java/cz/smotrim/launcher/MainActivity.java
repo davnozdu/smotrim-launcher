@@ -102,6 +102,8 @@ public class MainActivity extends FlutterActivity {
                 case "isDeviceOwner" -> result.success(isDeviceOwner());
                 case "enableHotelMode" -> result.success(enableHotelMode(call.arguments()));
                 case "disableHotelMode" -> result.success(disableHotelMode());
+                case "clearGuestData" -> result.success(clearGuestData(call.arguments()));
+                case "factoryReset" -> result.success(factoryReset());
                 case "isDefaultLauncher" -> result.success(isDefaultLauncher());
                 case "checkForGetContentAvailability" -> result.success(checkForGetContentAvailability());
                 case "startAmbientMode" -> result.success(startAmbientMode());
@@ -510,6 +512,40 @@ public class MainActivity extends FlutterActivity {
 
     private void trySetHidden(DevicePolicyManager dpm, ComponentName a, String pkg, boolean hidden) {
         try { dpm.setApplicationHidden(a, pkg, hidden); } catch (Exception ignored) {}
+    }
+
+    /** Wipes per-app data of the guest apps (e.g. YouTube logins) — checkout reset. */
+    private boolean clearGuestData(java.util.List<String> packages) {
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return false; // clearApplicationUserData: API 28+
+            DevicePolicyManager dpm = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
+            ComponentName admin = HotelAdminReceiver.getComponentName(this);
+            if (dpm == null || !dpm.isDeviceOwnerApp(getPackageName()) || packages == null) return false;
+            java.util.concurrent.Executor exec = getMainExecutor();
+            for (String pkg : packages) {
+                if (pkg == null || pkg.equals(getPackageName())) continue;
+                try {
+                    dpm.clearApplicationUserData(admin, pkg, exec, (p, ok) -> { });
+                } catch (Exception ignored) {}
+            }
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /** Full factory reset of the device (Device Owner). Irreversible. */
+    private boolean factoryReset() {
+        try {
+            DevicePolicyManager dpm = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
+            if (dpm == null || !dpm.isDeviceOwnerApp(getPackageName())) return false;
+            dpm.wipeData(0);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     // The player can't self-start from its boot receiver on Android 12+/14

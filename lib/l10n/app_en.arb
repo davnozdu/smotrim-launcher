@@ -226,5 +226,16 @@
     "hotelLockedOut": "Too many attempts. Please wait.",
     "hotelNeedDeviceOwner": "This device isn't provisioned as Device Owner — the kiosk won't be enforced.",
     "hotelPinRequired": "Set an 8-digit PIN first",
+    "hotelAdminTitle": "Administration",
+    "hotelResetGuest": "Reset guest data",
+    "hotelResetGuestDesc": "Wipe data of the selected apps (logins, etc.). Hotel mode and settings are kept. Toggle off the apps to keep (e.g. TV).",
+    "hotelDoReset": "Reset selected",
+    "hotelResetConfirmMsg": "Wipe data of the selected apps? This can't be undone.",
+    "hotelResetDone": "Data cleared",
+    "hotelExit": "Leave hotel mode",
+    "hotelFactoryReset": "Full device reset",
+    "hotelFactoryResetWarn": "The device will be fully reset to factory settings. This can't be undone.",
+    "hotelCancel": "Cancel",
+    "hotelReset": "Reset",
     "install": "Install"
 }

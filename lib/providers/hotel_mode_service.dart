@@ -24,6 +24,7 @@ class HotelModeService extends ChangeNotifier {
   static const _kPinHash = "hotel_pin_hash";
   static const _kSalt = "hotel_salt";
   static const _kAllowed = "hotel_allowed";
+  static const _kKeep = "hotel_keep_on_reset"; // packages NOT wiped on checkout
   static const _kFails = "hotel_fails";
   static const _kLockoutUntil = "hotel_lockout_until";
 
@@ -74,6 +75,29 @@ class HotelModeService extends ChangeNotifier {
     return ms > 0 ? Duration(milliseconds: ms) : Duration.zero;
   }
 
+  /// Packages kept (not wiped) on a checkout reset — e.g. the TV/IPTV app.
+  Set<String> get keepOnReset => (_prefs.getStringList(_kKeep) ?? const []).toSet();
+
+  Future<void> setKeepOnReset(String pkg, bool keep) async {
+    final set = keepOnReset;
+    if (keep) {
+      set.add(pkg);
+    } else {
+      set.remove(pkg);
+    }
+    await _prefs.setStringList(_kKeep, set.toList());
+    notifyListeners();
+  }
+
+  /// Wipes data of the whitelisted guest apps except those kept; admin config
+  /// (PIN, whitelist) and hotel mode itself stay intact. Returns true if applied.
+  Future<bool> clearGuestData(List<String> packages) async {
+    if (packages.isEmpty) return true;
+    return _channel.clearGuestData(packages);
+  }
+
+  Future<bool> factoryReset() => _channel.factoryReset();
+
   /// Enables the kiosk pinned to [allowed]. Requires a PIN to already be set.
   /// Returns true if the native Device-Owner policy was applied.
   Future<bool> enable(List<String> allowed) async {
@@ -90,13 +114,14 @@ class HotelModeService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Verifies the unlock PIN (or master code) and, on success, leaves hotel
-  /// mode. Returns true on success. Wrong codes count toward a lockout.
-  Future<bool> verifyAndUnlock(String code) async {
+  /// Verifies the admin PIN (or service master code). Does NOT leave hotel mode
+  /// — on success the caller opens the admin panel. Wrong codes count toward a
+  /// lockout. Returns true on success.
+  Future<bool> verifyCode(String code) async {
     if (lockoutRemaining > Duration.zero) return false;
     if (_pinMatches(code)) {
       await _prefs.setInt(_kFails, 0);
-      await disable();
+      notifyListeners();
       return true;
     }
     final fails = (_prefs.getInt(_kFails) ?? 0) + 1;

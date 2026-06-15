@@ -222,5 +222,16 @@
     "hotelLockedOut": "Demasiados intentos. Espere.",
     "hotelNeedDeviceOwner": "Este dispositivo no es Device Owner: el quiosco no se aplicará.",
     "hotelPinRequired": "Primero defina un PIN de 8 dígitos",
+    "hotelAdminTitle": "Administración",
+    "hotelResetGuest": "Restablecer datos del huésped",
+    "hotelResetGuestDesc": "Borra los datos de las apps seleccionadas (inicios de sesión, etc.). Se mantienen el modo hotel y los ajustes. Desactive las apps que quiera conservar (p. ej. TV).",
+    "hotelDoReset": "Restablecer seleccionadas",
+    "hotelResetConfirmMsg": "¿Borrar los datos de las apps seleccionadas? No se puede deshacer.",
+    "hotelResetDone": "Datos borrados",
+    "hotelExit": "Salir del modo hotel",
+    "hotelFactoryReset": "Restablecer todo el dispositivo",
+    "hotelFactoryResetWarn": "El dispositivo se restablecerá por completo a los ajustes de fábrica. No se puede deshacer.",
+    "hotelCancel": "Cancelar",
+    "hotelReset": "Restablecer",
     "install": "Instalar"
 }

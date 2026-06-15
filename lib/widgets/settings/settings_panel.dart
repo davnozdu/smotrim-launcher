@@ -34,6 +34,8 @@ import 'package:flauncher/widgets/settings/interface_settings_page.dart';
 import 'package:flauncher/widgets/settings/general_settings_page.dart';
 import 'package:flauncher/widgets/settings/hotel_mode_page.dart';
 import 'package:flauncher/widgets/settings/hotel_unlock_page.dart';
+import 'package:flauncher/widgets/settings/hotel_admin_page.dart';
+import 'package:flauncher/widgets/settings/hotel_reset_page.dart';
 import 'package:flauncher/providers/hotel_mode_service.dart';
 import 'package:provider/provider.dart';
 import 'package:flauncher/widgets/settings/screensaver_clock_style_page.dart';
@@ -82,7 +84,15 @@ class _SettingsPanelState extends State<SettingsPanel> {
                     : (widget.initialRoute ?? SettingsPanelPage.routeName),
                 onGenerateRoute: (settings) {
                   if (locked) {
-                    return _FastPageRoute(builder: (_) => const HotelUnlockPage());
+                    // Only the hotel screens are reachable while locked.
+                    switch (settings.name) {
+                      case HotelAdminPage.routeName:
+                        return _FastPageRoute(builder: (_) => const HotelAdminPage());
+                      case HotelResetPage.routeName:
+                        return _FastPageRoute(builder: (_) => const HotelResetPage());
+                      default:
+                        return _FastPageRoute(builder: (_) => const HotelUnlockPage());
+                    }
                   }
                   switch (settings.name) {
                     case HotelModePage.routeName:
