@@ -9,6 +9,7 @@
  */
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -115,6 +116,80 @@ class _AppStorePageState extends State<AppStorePage> {
     return "appstore-download.apk";
   }
 
+  /// True for the store's "install" navigation: `version.php?...&download=1`.
+  /// Such links don't stream the APK on every host (they may 302 to GitHub's
+  /// release page), so we resolve and install the latest APK ourselves instead
+  /// of letting the WebView wander off to github.com.
+  String? _installRepoFor(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return null;
+    final isDownload = uri.queryParameters.containsKey("download") &&
+        uri.path.toLowerCase().contains("version.php");
+    if (!isDownload) return null;
+    final repo = uri.queryParameters["repo"];
+    if (repo == null || !repo.contains("/")) return null;
+    return repo;
+  }
+
+  /// Resolves the latest release of [repo] and installs its APK (universal
+  /// preferred), straight from github.com — no dependency on the site's PHP.
+  Future<void> _installFromRepo(String repo) async {
+    if (_downloading) return;
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
+    String? apkUrl, apkName;
+    try {
+      final tag = await _resolveLatestTag(client, repo);
+      if (tag != null) {
+        final res = await _resolveApkUrl(client, repo, tag);
+        if (res != null) {
+          apkUrl = res.$1;
+          apkName = res.$2;
+        }
+      }
+    } catch (e) {
+      debugPrint("App store resolve failed ($repo): $e");
+    } finally {
+      client.close();
+    }
+    if (apkUrl == null) {
+      _showError();
+      return;
+    }
+    await _downloadAndInstall(apkUrl, apkName);
+  }
+
+  Future<String?> _resolveLatestTag(HttpClient client, String repo) async {
+    final request =
+        await client.getUrl(Uri.parse("https://github.com/$repo/releases/latest"));
+    request.followRedirects = false;
+    final response = await request.close();
+    await response.drain();
+    if (response.statusCode < 300 || response.statusCode >= 400) return null;
+    final location = response.headers.value(HttpHeaders.locationHeader) ?? "";
+    return RegExp(r'/tag/([^/?#]+)').firstMatch(location)?.group(1);
+  }
+
+  /// First `.apk` on the release assets page, preferring the universal build.
+  Future<(String, String)?> _resolveApkUrl(HttpClient client, String repo, String tag) async {
+    final request = await client
+        .getUrl(Uri.parse("https://github.com/$repo/releases/expanded_assets/$tag"));
+    final response = await request.close();
+    if (response.statusCode != HttpStatus.ok) return null;
+    final html = await response.transform(utf8.decoder).join();
+    final matches = RegExp(r'href="([^"]*?\.apk)"', caseSensitive: false)
+        .allMatches(html)
+        .map((m) => m.group(1)!)
+        .toList();
+    if (matches.isEmpty) return null;
+    String pick = matches.firstWhere(
+        (u) => u.toLowerCase().contains("universal") || u.toLowerCase().contains("app-release"),
+        orElse: () => matches.firstWhere((u) => u.toLowerCase().contains("arm64"),
+            orElse: () => matches.first));
+    if (pick.startsWith("/")) pick = "https://github.com$pick";
+    final name = Uri.tryParse(pick)?.pathSegments.last ?? "appstore-download.apk";
+    return (pick, name);
+  }
+
   void _showError() {
     if (!mounted) return;
     final l = AppLocalizations.of(context)!;
@@ -134,11 +209,23 @@ class _AppStorePageState extends State<AppStorePage> {
   }
 
   Future<void> _handleBack() async {
+    // 1) Let the page close an open detail card first (Back = leave the card,
+    //    back to the store's main screen).
+    try {
+      final handled = await _controller?.evaluateJavascript(
+          source: "window.__hubBack ? window.__hubBack() : false");
+      if (handled == true) {
+        _disarmExit();
+        return;
+      }
+    } catch (_) {}
+    // 2) WebView history (e.g. language sub-navigation).
     if (await (_controller?.canGoBack() ?? Future.value(false))) {
       await _controller?.goBack();
       _disarmExit();
       return;
     }
+    // 3) At the store's main screen: a second Back exits to the launcher shell.
     if (_exitArmed) {
       if (mounted) Navigator.of(context).pop();
       return;
@@ -217,6 +304,8 @@ class _AppStorePageState extends State<AppStorePage> {
                 initialSettings: InAppWebViewSettings(
                   // Required for onDownloadStartRequest to fire.
                   useOnDownloadStart: true,
+                  // Required for shouldOverrideUrlLoading to fire.
+                  useShouldOverrideUrlLoading: true,
                   javaScriptEnabled: true,
                   transparentBackground: true,
                   supportZoom: false,
@@ -226,6 +315,17 @@ class _AppStorePageState extends State<AppStorePage> {
                   horizontalScrollBarEnabled: false,
                   overScrollMode: OverScrollMode.NEVER,
                 ),
+                shouldOverrideUrlLoading: (controller, action) async {
+                  final url = action.request.url?.toString() ?? "";
+                  final repo = _installRepoFor(url);
+                  if (repo != null) {
+                    // Intercept the "install" link and install the latest APK
+                    // ourselves instead of navigating off to github.com.
+                    _installFromRepo(repo);
+                    return NavigationActionPolicy.CANCEL;
+                  }
+                  return NavigationActionPolicy.ALLOW;
+                },
                 onWebViewCreated: (controller) => _controller = controller,
                 onLoadStart: (controller, url) {
                   if (mounted) setState(() => _pageLoading = true);
@@ -240,7 +340,13 @@ class _AppStorePageState extends State<AppStorePage> {
                   if (mounted) setState(() => _pageLoading = false);
                 },
                 onDownloadStartRequest: (controller, request) {
-                  _downloadAndInstall(request.url.toString(), request.suggestedFilename);
+                  final url = request.url.toString();
+                  final repo = _installRepoFor(url);
+                  if (repo != null) {
+                    _installFromRepo(repo);
+                  } else {
+                    _downloadAndInstall(url, request.suggestedFilename);
+                  }
                 },
               ),
               ),
