@@ -8,18 +8,17 @@
 
 ## Features
 
-- **Russian & Ukrainian** — full localization; the interface language follows your system settings.
-- **Subscription renewal** — a "Renew subscription" button on the home screen opens payment instructions with a Czech QR Platba code (amount pre-filled).
-- **Info banner** — `smotrim.cz` and the support phone number are always visible at the bottom of the home screen.
-- **Data Usage Widget** — track daily Internet consumption (WiFi, Ethernet, Mobile) from the status bar.
+- **Russian, Ukrainian & English** — full localization; the interface language follows your system settings.
+- **App store (AppHub)** — a built-in store (`tv.smotrim.cz`) opens in a WebView; pick an app with the remote and it downloads & installs straight from GitHub releases.
+- **One-tap companion installs** — buttons that install/update **Smotrim Player** and **HLS-PROXY**, always pulling the latest release.
+- **Subscription renewal** — a button opens payment instructions with a Czech QR Platba code (amount pre-filled) or card payment.
+- **In-app auto-update** — the launcher checks its own GitHub releases and updates itself; there's also a manual "Check for updates".
+- **Hotel mode (kiosk)** — lock the box to a whitelist of apps behind an 8-digit PIN, enforced as a Device Owner (see below).
+- **Network status** — a WiFi/Ethernet indicator next to the settings gear shows the connection at a glance.
 - **OLED Screensaver** — minimal screensaver with clock position shifting to prevent burn-in.
-- **Easy WiFi Access** — the network indicator doubles as a shortcut to system WiFi settings.
-- **Quick Presets** — pick time/date formats and category names from a list (no keyboard required).
-- **Time-Based Wallpaper** — automatically switch between day and night backgrounds.
-- **Themes & Accent Color** — multiple visual styles (Default, Premium, Classic, Capsule) and color presets.
+- **Time-Based Wallpaper**, **Themes & Accent Color** (Default, Premium, Classic, Capsule), navigation sound feedback.
 - **Customizable categories** — reorder apps and categories, row or grid layout, custom banners, a "Favorites" category.
-- **No ads**, support for non-TV (sideloaded) apps, navigation sound feedback.
-- **Official support** for `armeabi-v7a` and `arm64-v8a` devices.
+- **No ads**, support for non-TV (sideloaded) apps. Universal APK (`armeabi-v7a` + `arm64-v8a`).
 
 ## Screenshots
 
@@ -67,37 +66,75 @@ $ adb shell pm enable com.google.android.tungsten.setupwraith
 #### Known issues
 On Chromecast with Google TV (and possibly others), the "YouTube" remote button stops working while the default launcher is disabled. As a workaround, remap it with [Key Mapper](https://github.com/keymapperorg/KeyMapper).
 
+## Home screen & app store
+
+At the bottom of the home screen, under the apps:
+- **Renew subscription** — opens payment instructions: bank transfer with a pre-filled Czech QR Platba code (1000 Kč embedded) or card payment via a SumUp QR. Notes about business-hours processing and SMS confirmation are shown.
+- **Install / Update Smotrim Player** and **Install / Update HLS-PROXY** — one tap checks the installed version against the latest GitHub release and either installs or updates it (or tells you it's already up to date).
+- **App store (AppHub)** — opens the Smotrim store (`tv.smotrim.cz`) in a full-screen WebView. Drive the catalog with the D-pad, press **OK** to open an app, and **OK** on *Install* downloads & installs it. **Back** closes a card; at the store's main screen Back asks to confirm before leaving.
+
+When a launcher update is available, a green prompt appears at the top of the home — press **OK** to install. You can also force a check in **Settings → System → Check for updates**.
+
 ## Wallpaper
 Because Android's `WallpaperManager` is not available on some Android TV devices, the launcher implements its own wallpaper management. Changing the wallpaper requires a file explorer installed on the device to pick a file.
 
 ## Hotel mode (kiosk)
 
-Hotel mode turns the box into a locked kiosk: the guest can only open the apps you whitelist (TV, YouTube, …). Google Play is hidden, system settings are unreachable, and factory reset / safe boot / ADB / uninstall are blocked. The only way into the admin panel is the owner-set **8-digit PIN** — there is **no hidden code or back-door of any kind**. A forgotten PIN can only be recovered by factory-resetting (re-provisioning) the device.
+Hotel mode turns the box into a locked kiosk: the guest can only open the apps you whitelist (TV, YouTube, …). Google Play is hidden, system settings are unreachable, and factory reset / safe boot / ADB / uninstall are blocked. The only way into the admin panel is the owner-set **8-digit PIN** — there is **no hidden code or back-door of any kind**. A forgotten PIN can only be recovered by factory-resetting the device.
 
-### One-time provisioning (required for real enforcement)
-Hotel mode is enforced only when this launcher is the **Device Owner**. Set it once on a **freshly reset** device that has **no Google account added yet**:
+### Step 1 — Provision the launcher as Device Owner (one-time)
+
+Real enforcement requires this launcher to be the **Device Owner**. Device Owner can only be set while the device has **no secondary users and no accounts** — but you do **not** need a factory reset or a "skip sign-in" option: just remove the account temporarily, set Device Owner, then add it back.
 
 ```shell
-# Enable ADB (Settings → System → Developer options → USB/Network debugging),
-# then from a computer:
+# Enable ADB on the TV (Settings → Device Preferences → About → tap Build 7×
+# → Developer options → USB/Network debugging), then from a computer:
 adb connect <tv-ip>:5555
+
+# 1) Remove any secondary users (keep user 0 / Owner):
+adb shell pm list users
+adb shell pm remove-user <id>          # repeat for each non-0 user
+
+# 2) Remove every account (Settings → Accounts → remove). Open the screen with:
+adb shell am start -a android.settings.SYNC_SETTINGS
+#    confirm none remain (output must be empty):
+adb shell dumpsys account | grep "Account {"
+
+# 3) Set Device Owner:
 adb shell dpm set-device-owner cz.smotrim.launcher/.HotelAdminReceiver
+#    → Success: Device owner set to package cz.smotrim.launcher/.HotelAdminReceiver
+
+# 4) Add your Google account back so Play-dependent apps (YouTube, …) work:
+adb shell am start -a android.settings.ADD_ACCOUNT_SETTINGS
 ```
 
-You should see `Success: Device owner set ...`. If it fails with "already has an account/owner", factory-reset the TV first and run it before signing in.
+Re-adding the account **after** Device Owner is set works on most devices (this launcher does not block accounts). Verified on Xiaomi Mi TV (Android 14).
 
-> Without this step hotel mode is **cosmetic only** (it filters the app list and locks our settings, but Play Store and system settings are **not** blocked).
+> Without Device Owner, hotel mode is **cosmetic only** — it filters the app list, hides the action buttons and locks our settings behind the PIN, but Play Store and **system settings are not actually blocked** and a determined guest can still escape. Good enough for trusted guests; not a real lockdown.
 
-### Setup & daily use
-1. Settings → **Hotel mode** → set the 8-digit PIN, tick the apps a guest may use, then **Turn on hotel mode**.
-2. While locked, opening Settings shows **only** the unlock screen.
-3. Enter the PIN to reach the **admin panel**: reset guest data, leave hotel mode, or factory-reset the device.
-4. **Checkout reset** wipes only the data of the apps you choose (e.g. clears the YouTube login) — toggle off the apps to keep signed in (e.g. the TV app). Hotel mode, the PIN and the whitelist are preserved.
+**Does adding a user/account later break it?** No. Device Owner is permanent — it is **not** lost by adding or removing accounts or users. It is removed only by a factory reset, by uninstalling the launcher (blocked while hotel mode is on), or by the launcher relinquishing it. While hotel mode is active, adding new users is blocked.
+
+### Step 2 — Set it up (in the launcher)
+**Settings → Hotel mode:**
+1. **Set the 8-digit PIN** — you enter it twice to confirm.
+2. **Tick the apps** a guest may use (TV, YouTube, …).
+3. *(optional)* **Auto-launch app** — the chosen app starts automatically on boot, so the guest lands straight on it.
+4. **Turn on hotel mode.**
+
+### Step 3 — Daily use & admin
+- While locked, the home shows **only** the whitelisted apps (banner and all install/action buttons are hidden), and opening Settings shows **only** the unlock screen.
+- Enter the PIN to reach the **admin panel**:
+  - **Reset guest data** (checkout) — wipes data **and cache** of the guest apps, keeping the ones you toggle off (e.g. the TV app stays signed in); the choice is remembered for next time.
+  - **Reset data by app** — pick exactly the apps to wipe right now.
+  - **Change PIN** — entered twice.
+  - **Leave hotel mode** — back to the full launcher.
+  - **Full device reset** — factory reset, behind a confirmation.
 
 ### Security notes
-- The PIN is stored salted-SHA-256 (never in clear text); 5 wrong tries trigger a 1-minute lockout. There is no master/service code in the build.
+- The PIN is stored salted-SHA-256 (never in clear text); 5 wrong tries trigger a 1-minute lockout. **There is no master/service code in the build** — the owner PIN is the only way in.
 - Enforcement is at the OS level (Device Owner lock-task), not just in the UI — even a UI slip cannot launch Settings/Play because they aren't whitelisted.
-- After provisioning, hotel mode disables developer features (ADB) so the data can't be cleared over `adb`. Keep the bootloader locked; no Android app can prevent a firmware re-flash on an unlocked bootloader.
+- Hotel mode blocks developer features (ADB), factory reset, safe boot and uninstall, so the data can't be wiped or the launcher removed from outside. Keep the bootloader locked; no Android app can prevent a firmware re-flash on an unlocked bootloader.
+- **Forgotten PIN:** the only recovery is a factory reset of the device (by design — there is no back-door).
 
 ## Building
 APKs are built and signed automatically on **GitHub Actions** (`.github/workflows/build.yml`). Release builds are signed with a persistent key stored in repository secrets, so updates install over previous versions.
