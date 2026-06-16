@@ -6,6 +6,8 @@
   <img alt="Get it on GitHub" src="https://raw.githubusercontent.com/rubenpgrady/get-it-on-github/refs/heads/main/get-it-on-github.png" height="50">
 </a>
 
+> 📖 **Инструкция на русском (установка, магазин, режим отеля): [ИНСТРУКЦИЯ.md](ИНСТРУКЦИЯ.md)**
+
 ## Features
 
 - **Russian, Ukrainian & English** — full localization; the interface language follows your system settings.
