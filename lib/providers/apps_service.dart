@@ -97,6 +97,8 @@ class AppsService extends ChangeNotifier {
     await _refreshState(shouldNotifyListeners: false);
     if (_database.wasCreated) {
       await _initDefaultCategories();
+    } else {
+      await _migrateFavoritesFirst();
     }
 
     _fLauncherChannel.addAppsChangedListener((event) async {
@@ -246,6 +248,8 @@ class AppsService extends ChangeNotifier {
         .where((application) => application.sideloaded == true);
 
     return _database.transaction(() async {
+      await addCategory("Favorites", shouldNotifyListeners: false);
+
       if (nonTvApplications.isNotEmpty) {
         int categoryId = await addCategory(
           "Non-TV Apps",
@@ -264,9 +268,26 @@ class AppsService extends ChangeNotifier {
         await addAllToCategory(tvApplications, tvAppsCategory,
             shouldNotifyListeners: false);
       }
-
-      await addCategory("Favorites", shouldNotifyListeners: false);
     });
+  }
+
+  // One-time migration for existing installs: move the "Favorites" category to
+  // the top of the home screen (above the app categories). New installs already
+  // seed it first, so this only fixes boxes created before that change.
+  static const String _favoritesFirstMigrationKey = "favorites_first_migration_done";
+
+  Future<void> _migrateFavoritesFirst() async {
+    final prefs = await _prefsAsync;
+    if (prefs.getBool(_favoritesFirstMigrationKey) ?? false) return;
+
+    final index = _launcherSections.indexWhere(
+        (section) => section is Category && section.name == "Favorites");
+    if (index > 0) {
+      moveSectionInMemory(index, 0);
+      await persistSectionsOrder();
+    }
+
+    await prefs.setBool(_favoritesFirstMigrationKey, true);
   }
 
   Future<void> _refreshState({bool shouldNotifyListeners = true}) async {
