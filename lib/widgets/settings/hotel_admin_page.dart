@@ -9,6 +9,8 @@ import 'package:flauncher/l10n/app_localizations.dart';
 import 'package:flauncher/providers/hotel_mode_service.dart';
 import 'focusable_settings_tile.dart';
 import 'hotel_reset_page.dart';
+import 'hotel_reset_apps_page.dart';
+import 'set_pin_dialog.dart';
 
 /// Shown after the admin PIN is accepted while hotel mode is locked. Lets staff
 /// reset guest data, leave hotel mode, or factory-reset the device — without
@@ -35,6 +37,26 @@ class HotelAdminPage extends StatelessWidget {
                   leading: const Icon(Icons.cleaning_services_outlined),
                   title: Text(l.hotelResetGuest, style: Theme.of(context).textTheme.bodyMedium),
                   onPressed: () => Navigator.of(context).pushNamed(HotelResetPage.routeName),
+                ),
+                FocusableSettingsTile(
+                  leading: const Icon(Icons.apps_outlined),
+                  title: Text(l.hotelResetByApps, style: Theme.of(context).textTheme.bodyMedium),
+                  onPressed: () => Navigator.of(context).pushNamed(HotelResetAppsPage.routeName),
+                ),
+                FocusableSettingsTile(
+                  leading: const Icon(Icons.password),
+                  title: Text(l.hotelChangePin, style: Theme.of(context).textTheme.bodyMedium),
+                  onPressed: () async {
+                    final code = await showSetPinDialog(context);
+                    if (code != null && context.mounted) {
+                      await context.read<HotelModeService>().setPin(code);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context)
+                          ..clearSnackBars()
+                          ..showSnackBar(SnackBar(content: Text(l.hotelPinChanged)));
+                      }
+                    }
+                  },
                 ),
                 FocusableSettingsTile(
                   leading: const Icon(Icons.lock_open),

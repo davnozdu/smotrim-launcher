@@ -239,5 +239,11 @@
     "hotelReset": "Сбросить",
     "hotelAutoLaunch": "Автозапуск приложения при включении",
     "hotelAutoLaunchNone": "Нет",
+    "hotelRepeatPin": "Повторите ПИН-код",
+    "hotelPinMismatch": "ПИН-коды не совпадают",
+    "hotelChangePin": "Сменить ПИН-код",
+    "hotelPinChanged": "ПИН-код изменён",
+    "hotelResetByApps": "Сброс данных по приложениям",
+    "hotelResetByAppsDesc": "Выберите приложения, данные и кеш которых очистить.",
     "install": "Установить"
 }

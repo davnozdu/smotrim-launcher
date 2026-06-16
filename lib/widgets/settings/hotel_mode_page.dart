@@ -11,7 +11,7 @@ import 'package:flauncher/providers/hotel_mode_service.dart';
 import 'package:flauncher/models/app.dart';
 import 'package:flauncher/widgets/rounded_switch_list_tile.dart';
 import 'focusable_settings_tile.dart';
-import 'pin_pad.dart';
+import 'set_pin_dialog.dart';
 
 /// Owner-only setup for hotel mode: set the 8-digit PIN, pick the apps a guest
 /// may use, then activate the kiosk.
@@ -38,21 +38,9 @@ class _HotelModePageState extends State<HotelModePage> {
   }
 
   Future<void> _setPin() async {
-    final l = AppLocalizations.of(context)!;
     final hotel = context.read<HotelModeService>();
-    await showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(l.hotelSetPin),
-        content: SizedBox(
-          width: 320,
-          child: PinPad(onCompleted: (code) async {
-            await hotel.setPin(code);
-            if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-          }),
-        ),
-      ),
-    );
+    final code = await showSetPinDialog(context);
+    if (code != null) await hotel.setPin(code);
     if (mounted) setState(() {});
   }
 

@@ -239,5 +239,11 @@
     "hotelReset": "Скинути",
     "hotelAutoLaunch": "Автозапуск застосунку під час увімкнення",
     "hotelAutoLaunchNone": "Немає",
+    "hotelRepeatPin": "Повторіть PIN-код",
+    "hotelPinMismatch": "PIN-коди не збігаються",
+    "hotelChangePin": "Змінити PIN-код",
+    "hotelPinChanged": "PIN-код змінено",
+    "hotelResetByApps": "Скидання даних за застосунками",
+    "hotelResetByAppsDesc": "Виберіть застосунки, дані та кеш яких очистити.",
     "install": "Встановити"
 }

@@ -235,5 +235,11 @@
     "hotelReset": "Restablecer",
     "hotelAutoLaunch": "Iniciar app automáticamente al arrancar",
     "hotelAutoLaunchNone": "Ninguna",
+    "hotelRepeatPin": "Repita el PIN",
+    "hotelPinMismatch": "Los PIN no coinciden",
+    "hotelChangePin": "Cambiar PIN",
+    "hotelPinChanged": "PIN cambiado",
+    "hotelResetByApps": "Restablecer datos por app",
+    "hotelResetByAppsDesc": "Elija las apps cuyos datos y caché borrar ahora.",
     "install": "Instalar"
 }

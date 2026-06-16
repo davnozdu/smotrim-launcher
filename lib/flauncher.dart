@@ -77,7 +77,8 @@ class _FLauncherState extends State<FLauncher> {
             child: Scaffold(
               backgroundColor: Colors.transparent,
               appBar: FocusAwareAppBar(key: _appBarKey),
-              bottomNavigationBar: const SmotrimBanner(),
+              // The branding banner is hidden in hotel mode.
+              bottomNavigationBar: context.watch<HotelModeService>().enabled ? null : const SmotrimBanner(),
               body: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Consumer2<AppsService, HotelModeService>(

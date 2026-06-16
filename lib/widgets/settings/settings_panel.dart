@@ -36,6 +36,7 @@ import 'package:flauncher/widgets/settings/hotel_mode_page.dart';
 import 'package:flauncher/widgets/settings/hotel_unlock_page.dart';
 import 'package:flauncher/widgets/settings/hotel_admin_page.dart';
 import 'package:flauncher/widgets/settings/hotel_reset_page.dart';
+import 'package:flauncher/widgets/settings/hotel_reset_apps_page.dart';
 import 'package:flauncher/providers/hotel_mode_service.dart';
 import 'package:provider/provider.dart';
 import 'package:flauncher/widgets/settings/screensaver_clock_style_page.dart';
@@ -90,6 +91,8 @@ class _SettingsPanelState extends State<SettingsPanel> {
                         return _FastPageRoute(builder: (_) => const HotelAdminPage());
                       case HotelResetPage.routeName:
                         return _FastPageRoute(builder: (_) => const HotelResetPage());
+                      case HotelResetAppsPage.routeName:
+                        return _FastPageRoute(builder: (_) => const HotelResetAppsPage());
                       default:
                         return _FastPageRoute(builder: (_) => const HotelUnlockPage());
                     }

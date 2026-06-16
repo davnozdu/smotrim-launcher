@@ -239,5 +239,11 @@
     "hotelReset": "Reset",
     "hotelAutoLaunch": "Auto-launch app on boot",
     "hotelAutoLaunchNone": "None",
+    "hotelRepeatPin": "Repeat the PIN",
+    "hotelPinMismatch": "PINs don't match",
+    "hotelChangePin": "Change PIN",
+    "hotelPinChanged": "PIN changed",
+    "hotelResetByApps": "Reset data by app",
+    "hotelResetByAppsDesc": "Pick the apps to wipe now (data and cache).",
     "install": "Install"
 }
