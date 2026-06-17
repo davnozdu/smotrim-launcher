@@ -9,6 +9,7 @@
  */
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flauncher/l10n/app_localizations.dart';
 
@@ -25,11 +26,16 @@ class _Payment {
   static const String cardPaymentUrl = "https://pay.sumup.com/b2c/QZFA9XAV";
 
   /// Czech instant "QR Platba" (SPAYD) for the bank transfer. The payer's phone
-  /// number is put into the MSG (message for recipient) field, and the payment
-  /// type is set to instant (PT:IP).
-  static String transferSpayd(String payerPhone) {
-    final msg = payerPhone.replaceAll(RegExp(r'[*\s]'), '');
-    final msgPart = msg.isEmpty ? '' : '*MSG:$msg';
+  /// number and subscriber ID are put into the MSG (message for recipient)
+  /// field, and the payment type is set to instant (PT:IP).
+  static String transferSpayd(String payerPhone, String payerId) {
+    final phone = payerPhone.replaceAll(RegExp(r'[*\s]'), '');
+    final id = payerId.replaceAll(RegExp(r'[*\s]'), '');
+    final parts = <String>[
+      if (phone.isNotEmpty) phone,
+      if (id.isNotEmpty) 'ID:$id',
+    ];
+    final msgPart = parts.isEmpty ? '' : '*MSG:${parts.join(' ')}';
     return "SPD*1.0*ACC:$iban+$bic*AM:1000.00*CC:CZK*PT:IP$msgPart";
   }
 }
@@ -115,15 +121,40 @@ class SubscriptionDialog extends StatefulWidget {
 class _SubscriptionDialogState extends State<SubscriptionDialog> {
   _PayPage _page = _PayPage.menu;
   String _phone = "";
+  String _id = "";
 
   void _goTo(_PayPage page) => setState(() => _page = page);
 
   Future<void> _editPhone() async {
+    final l = AppLocalizations.of(context)!;
     final result = await showDialog<String>(
       context: context,
-      builder: (_) => _PhoneInputDialog(initial: _phone),
+      builder: (_) => _TextInputDialog(
+        title: l.subscriptionYourPhone,
+        initial: _phone,
+        icon: Icons.phone,
+        keyboardType: TextInputType.phone,
+      ),
     );
     if (result != null && mounted) setState(() => _phone = result.trim());
+  }
+
+  Future<void> _editId() async {
+    final l = AppLocalizations.of(context)!;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (_) => _TextInputDialog(
+        title: l.subscriptionYourId,
+        initial: _id,
+        icon: Icons.badge,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(8),
+        ],
+      ),
+    );
+    if (result != null && mounted) setState(() => _id = result.trim());
   }
 
   @override
@@ -169,7 +200,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   }
 
   Widget _transferPage(BuildContext context, AppLocalizations l) {
-    final spayd = _Payment.transferSpayd(_phone);
+    final spayd = _Payment.transferSpayd(_phone, _id);
     return _scrollPage(
       context,
       title: l.payByTransfer,
@@ -179,6 +210,12 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
           label: _phone.isEmpty ? l.subscriptionYourPhone : _phone,
           autofocus: true,
           onPressed: _editPhone,
+        ),
+        const SizedBox(height: 12),
+        _MenuButton(
+          icon: Icons.badge,
+          label: _id.isEmpty ? l.subscriptionYourId : _id,
+          onPressed: _editId,
         ),
         const SizedBox(height: 16),
         _row(context, l.subscriptionAmountLabel, _Payment.amount, bold: true),
@@ -302,17 +339,29 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   }
 }
 
-/// Modal that collects the payer's phone number. Escapable via the keyboard's
-/// "done" action (pops with the value), the OK button, or Back.
-class _PhoneInputDialog extends StatefulWidget {
+/// Modal that collects a single text value (phone number or subscriber ID).
+/// Escapable via the keyboard's "done" action (pops with the value), the OK
+/// button, or Back.
+class _TextInputDialog extends StatefulWidget {
+  final String title;
   final String initial;
-  const _PhoneInputDialog({required this.initial});
+  final IconData icon;
+  final TextInputType keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+
+  const _TextInputDialog({
+    required this.title,
+    required this.initial,
+    required this.icon,
+    required this.keyboardType,
+    this.inputFormatters,
+  });
 
   @override
-  State<_PhoneInputDialog> createState() => _PhoneInputDialogState();
+  State<_TextInputDialog> createState() => _TextInputDialogState();
 }
 
-class _PhoneInputDialogState extends State<_PhoneInputDialog> {
+class _TextInputDialogState extends State<_TextInputDialog> {
   late final TextEditingController _controller = TextEditingController(text: widget.initial);
 
   @override
@@ -325,17 +374,18 @@ class _PhoneInputDialogState extends State<_PhoneInputDialog> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: Text(l.subscriptionYourPhone),
+      title: Text(widget.title),
       content: TextField(
         controller: _controller,
         autofocus: true,
-        keyboardType: TextInputType.phone,
+        keyboardType: widget.keyboardType,
+        inputFormatters: widget.inputFormatters,
         textInputAction: TextInputAction.done,
         onSubmitted: (value) => Navigator.of(context).pop(value),
         style: const TextStyle(color: Colors.white),
-        decoration: const InputDecoration(
-          prefixIcon: Icon(Icons.phone),
-          border: OutlineInputBorder(),
+        decoration: InputDecoration(
+          prefixIcon: Icon(widget.icon),
+          border: const OutlineInputBorder(),
         ),
       ),
       actions: [

@@ -31,7 +31,6 @@ import 'package:flauncher/widgets/focus_aware_app_bar.dart';
 import 'package:flauncher/widgets/smotrim_banner.dart';
 import 'package:flauncher/widgets/subscription_button.dart';
 import 'package:flauncher/widgets/player_install_button.dart';
-import 'package:flauncher/widgets/hls_proxy_install_button.dart';
 import 'package:flauncher/widgets/app_store_button.dart';
 import 'package:flauncher/widgets/update_banner.dart';
 import 'package:flutter/material.dart';
@@ -174,14 +173,13 @@ class _FLauncherState extends State<FLauncher> {
       // everything fit before the Wrap is forced to break onto a second line.
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final compactStore = constraints.maxWidth < 1500;
+          final compactStore = constraints.maxWidth < 1000;
           return Wrap(
             spacing: 16,
             runSpacing: 12,
             children: [
               const SubscriptionButton(),
               const PlayerInstallButton(),
-              const HlsProxyInstallButton(),
               AppStoreButton(compact: compactStore),
             ],
           );

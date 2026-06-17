@@ -12,7 +12,7 @@
 
 - **Russian, Ukrainian & English** — full localization; the interface language follows your system settings.
 - **App store (AppHub)** — a built-in store (`tv.smotrim.cz`) opens in a WebView; pick an app with the remote and it downloads & installs straight from GitHub releases.
-- **One-tap companion installs** — buttons that install/update **Smotrim Player** and **HLS-PROXY**, always pulling the latest release.
+- **One-tap companion install** — a button that installs/updates **Smotrim Player**, always pulling the latest release.
 - **Subscription renewal** — a button opens payment instructions with a Czech QR Platba code (amount pre-filled) or card payment.
 - **In-app auto-update** — the launcher checks its own GitHub releases and updates itself; there's also a manual "Check for updates".
 - **Hotel mode (kiosk)** — lock the box to a whitelist of apps behind an 8-digit PIN, enforced as a Device Owner (see below).
@@ -72,7 +72,7 @@ On Chromecast with Google TV (and possibly others), the "YouTube" remote button 
 
 At the bottom of the home screen, under the apps:
 - **Renew subscription** — opens payment instructions: bank transfer with a pre-filled Czech QR Platba code (1000 Kč embedded) or card payment via a SumUp QR. Notes about business-hours processing and SMS confirmation are shown.
-- **Install / Update Smotrim Player** and **Install / Update HLS-PROXY** — one tap checks the installed version against the latest GitHub release and either installs or updates it (or tells you it's already up to date).
+- **Install / Update Smotrim Player** — one tap checks the installed version against the latest GitHub release and either installs or updates it (or tells you it's already up to date).
 - **App store (AppHub)** — opens the Smotrim store (`tv.smotrim.cz`) in a full-screen WebView. Drive the catalog with the D-pad, press **OK** to open an app, and **OK** on *Install* downloads & installs it. **Back** closes a card; at the store's main screen Back asks to confirm before leaving.
 
 When a launcher update is available, a green prompt appears at the top of the home — press **OK** to install. You can also force a check in **Settings → System → Check for updates**.
