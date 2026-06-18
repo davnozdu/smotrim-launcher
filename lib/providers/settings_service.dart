@@ -17,6 +17,7 @@
  */
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flauncher/widgets/settings/back_button_actions.dart';
 import 'package:flutter/material.dart';
@@ -41,6 +42,13 @@ const String _accentColorKey = "accent_color";
 const String _screensaverClockStyleKey = "screensaver_clock_style";
 const String _timeBasedWallpaperEnabledKey = "time_based_wallpaper_enabled";
 const String _showInputsWidgetInStatusBarKey = "show_inputs_widget_in_status_bar";
+
+// Subscriber identity: a unique 8-digit ID and 6-digit PIN generated once on
+// this device and then kept forever (used by "become a subscriber").
+const String _subscriberIdKey = "subscriber_id";
+const String _subscriberPinKey = "subscriber_pin";
+const int subscriberIdLength = 8;
+const int subscriberPinLength = 6;
 
 // Accent color presets (hex values)
 const String ACCENT_COLOR_PURPLE = "7C4DFF";
@@ -82,6 +90,8 @@ class SettingsService extends ChangeNotifier {
   late String _screensaverClockStyle;
   late bool _timeBasedWallpaperEnabled;
   late bool _showInputsWidgetInStatusBar;
+  late String _subscriberId;
+  late String _subscriberPin;
 
   bool get appHighlightAnimationEnabled => _appHighlightAnimationEnabled;
 
@@ -117,6 +127,12 @@ class SettingsService extends ChangeNotifier {
 
   String get screensaverClockStyle => _screensaverClockStyle;
 
+  /// The device's permanent subscriber ID (8 digits) and PIN (6 digits). They
+  /// are generated once on first access and never change afterwards.
+  String get subscriberId => _subscriberId;
+
+  String get subscriberPin => _subscriberPin;
+
   Color get accentColor {
     final hex = accentColorHex;
     return Color(int.parse("0xFF$hex"));
@@ -141,6 +157,34 @@ class SettingsService extends ChangeNotifier {
     _screensaverClockStyle = _sharedPreferences.getString(_screensaverClockStyleKey) ?? "minimal";
     _timeBasedWallpaperEnabled = _sharedPreferences.getBool(_timeBasedWallpaperEnabledKey) ?? false;
     _showInputsWidgetInStatusBar = _sharedPreferences.getBool(_showInputsWidgetInStatusBarKey) ?? true;
+    _subscriberId = _loadOrCreateDigits(_subscriberIdKey, subscriberIdLength);
+    _subscriberPin = _loadOrCreateDigits(_subscriberPinKey, subscriberPinLength);
+  }
+
+  static final Random _rng = Random.secure();
+
+  // A random n-digit string whose first digit is never 0 (so it is always
+  // exactly n digits long), drawn from a cryptographically secure source.
+  static String _randomDigits(int n) {
+    final sb = StringBuffer();
+    sb.write(1 + _rng.nextInt(9));
+    for (var i = 1; i < n; i++) {
+      sb.write(_rng.nextInt(10));
+    }
+    return sb.toString();
+  }
+
+  // Returns the stored value if it is a valid n-digit string; otherwise
+  // generates a fresh one, persists it (fire-and-forget) and returns it. Once
+  // created the value is stable across launches and app updates.
+  String _loadOrCreateDigits(String key, int length) {
+    final existing = _sharedPreferences.getString(key);
+    if (existing != null && existing.length == length && int.tryParse(existing) != null) {
+      return existing;
+    }
+    final value = _randomDigits(length);
+    _sharedPreferences.setString(key, value);
+    return value;
   }
 
   Future<void> setAppHighlightAnimationEnabled(bool value) async {

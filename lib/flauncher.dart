@@ -178,6 +178,7 @@ class _FLauncherState extends State<FLauncher> {
             spacing: 16,
             runSpacing: 12,
             children: [
+              const BecomeSubscriberButton(),
               const SubscriptionButton(),
               const PlayerInstallButton(),
               AppStoreButton(compact: compactStore),
