@@ -13,22 +13,110 @@ class RowByRowTraversalPolicy extends FocusTraversalPolicy with DirectionalFocus
 
   @override
   bool inDirection(FocusNode currentNode, TraversalDirection direction) {
-    List<FocusNode>? nodes = currentNode.nearestScope?.traversalDescendants.toList();
-    if (nodes == null) {
+    final FocusScopeNode? scope = currentNode.nearestScope;
+    if (scope == null) {
       return super.inDirection(currentNode, direction);
     }
 
-    NodeSearcher searcher = NodeSearcher(direction);
-    List<CandidateNode> candidates = searcher.findCandidates(nodes, currentNode);
-    if (candidates.isEmpty) {
+    final FocusNode? nextNode = _findNextNode(scope, currentNode, direction);
+    if (nextNode == null) {
       if (direction == TraversalDirection.left || direction == TraversalDirection.right) {
         return false;
       }
       return super.inDirection(currentNode, direction);
     }
-    FocusNode nextNode = searcher.findBestFocusNode(candidates, currentNode);
     nextNode.requestFocus();
     return true;
+  }
+
+  /// Single-pass equivalent of [NodeSearcher.findCandidates] followed by
+  /// [NodeSearcher.findBestFocusNode], kept separate because this runs on every
+  /// single d-pad press.
+  ///
+  /// The two-step version copied the node list, wrapped every entry in a
+  /// throwaway object, unwrapped it again, and re-read [FocusNode.rect] — which
+  /// walks the render tree to compute a global transform — several times per
+  /// node. With a screenful of app cards that added up to hundreds of transform
+  /// computations and allocations per key press, which is exactly the kind of
+  /// per-input cost a remote-driven UI cannot afford.
+  FocusNode? _findNextNode(
+      FocusScopeNode scope, FocusNode currentNode, TraversalDirection direction) {
+    final Offset from = currentNode.rect.center;
+    final int fromX = from.dx.round();
+    final int fromY = from.dy.round();
+
+    FocusNode? best;
+    int bestX = 0;
+    int bestY = 0;
+    int bestDistanceSquared = 0;
+
+    for (final FocusNode node in scope.traversalDescendants) {
+      final Offset center = node.rect.center; // Read exactly once per node.
+      final int x = center.dx.round();
+      final int y = center.dy.round();
+
+      // Same filtering as findCandidates(): strictly in the requested
+      // direction, and for left/right also on the same row as the origin.
+      // These comparisons also exclude currentNode itself.
+      switch (direction) {
+        case TraversalDirection.up:
+          if (y >= fromY) continue;
+          break;
+        case TraversalDirection.down:
+          if (y <= fromY) continue;
+          break;
+        case TraversalDirection.left:
+          if (x >= fromX || y != fromY) continue;
+          break;
+        case TraversalDirection.right:
+          if (x <= fromX || y != fromY) continue;
+          break;
+      }
+
+      final int dx = x - fromX;
+      final int dy = y - fromY;
+      // Squared distance: same ordering as the sqrt the original compared on.
+      final int distanceSquared = dx * dx + dy * dy;
+
+      if (best == null) {
+        best = node;
+        bestX = x;
+        bestY = y;
+        bestDistanceSquared = distanceSquared;
+        continue;
+      }
+
+      // Same pairwise rule as findBestFocusNode(): prefer the nearest row (or
+      // column), then the closest candidate within it.
+      bool challengerWins;
+      switch (direction) {
+        case TraversalDirection.up:
+          challengerWins = y > bestY;
+          break;
+        case TraversalDirection.down:
+          challengerWins = y < bestY;
+          break;
+        case TraversalDirection.left:
+          challengerWins = x > bestX;
+          break;
+        case TraversalDirection.right:
+          challengerWins = x < bestX;
+          break;
+      }
+
+      if (!challengerWins && y == bestY && distanceSquared < bestDistanceSquared) {
+        challengerWins = true;
+      }
+
+      if (challengerWins) {
+        best = node;
+        bestX = x;
+        bestY = y;
+        bestDistanceSquared = distanceSquared;
+      }
+    }
+
+    return best;
   }
 }
 

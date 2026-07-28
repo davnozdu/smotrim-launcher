@@ -39,6 +39,15 @@ jobs:
       - name: Generate localizations
         run: flutter gen-l10n
 
+      # The launcher updates itself from these releases, so a broken build must
+      # not reach the field. Analyze catches type errors the APK build would
+      # miss only at runtime; the test suite guards the services and widgets.
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Test
+        run: flutter test
+
       - name: Decode keystore (release signing)
         id: keystore
         env:
