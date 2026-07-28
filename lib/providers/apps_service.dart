@@ -75,6 +75,10 @@ class AppsService extends ChangeNotifier {
   static const int _iconCacheSize = 60;
   static const int _bannerCacheSize = 40;
 
+  // A platform call that never answers must not leave a card spinning forever.
+  // The card degrades to the icon, and then to the app's name, instead.
+  static const Duration _imageLoadTimeout = Duration(seconds: 10);
+
   bool _initialized = false;
   bool _disposed = false;
   StreamSubscription? _appsChangedSubscription;
@@ -552,7 +556,9 @@ class AppsService extends ChangeNotifier {
 
     final Uint8List bytes;
     try {
-      bytes = await _fLauncherChannel.getApplicationBanner(packageName);
+      bytes = await _fLauncherChannel
+          .getApplicationBanner(packageName)
+          .timeout(_imageLoadTimeout);
     } catch (_) {
       // A failed platform call must not surface as an unhandled error; the card
       // falls back to the icon (and then to the app name) on empty bytes.
@@ -605,7 +611,9 @@ class AppsService extends ChangeNotifier {
   Future<Uint8List> _loadAppIcon(String packageName) async {
     final Uint8List bytes;
     try {
-      bytes = await _fLauncherChannel.getApplicationIcon(packageName);
+      bytes = await _fLauncherChannel
+          .getApplicationIcon(packageName)
+          .timeout(_imageLoadTimeout);
     } catch (_) {
       return Uint8List(0);
     }

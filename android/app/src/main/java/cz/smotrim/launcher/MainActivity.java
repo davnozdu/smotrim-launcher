@@ -88,14 +88,24 @@ public class MainActivity extends FlutterActivity {
         return channelExecutor;
     }
 
-    /** Runs [work] off the main thread and completes [result] back on it. */
+    /**
+     * Runs [work] off the main thread and completes [result] back on it.
+     *
+     * Catches Throwable, not Exception: bitmap work can raise OutOfMemoryError,
+     * and a linkage error is possible whenever an API is version-guarded. Those
+     * are Errors, so catching Exception let the worker thread die silently with
+     * the result never completed — which the Dart side cannot distinguish from a
+     * call still in progress, leaving the caller's Future pending forever.
+     * Every path through here must complete the result exactly once.
+     */
     private <T> void runAsync(Callable<T> work, MethodChannel.Result result) {
         channelExecutor().execute(() -> {
             T value;
             try {
                 value = work.call();
-            } catch (Exception e) {
-                runOnUiThread(() -> result.error("NATIVE_ERROR", e.getMessage(), null));
+            } catch (Throwable t) {
+                t.printStackTrace();
+                runOnUiThread(() -> result.error("NATIVE_ERROR", String.valueOf(t), null));
                 return;
             }
             runOnUiThread(() -> result.success(value));
@@ -789,50 +799,56 @@ public class MainActivity extends FlutterActivity {
         }
 
         Bitmap bitmap;
-        // A BitmapDrawable's bitmap is owned by the PackageManager's resources and
-        // must never be recycled here; anything we render ourselves is ours to free.
-        boolean ownsBitmap;
         if (drawable instanceof BitmapDrawable bitmapDrawable && bitmapDrawable.getBitmap() != null) {
             bitmap = bitmapDrawable.getBitmap();
-            ownsBitmap = false;
         } else {
             // Rasterise straight at the target size, so a vector or adaptive icon
             // never allocates a full-size bitmap just to be scaled down after.
             bitmap = drawableToBitmap(drawable, maxWidth);
-            ownsBitmap = true;
         }
 
         if (bitmap.getWidth() > maxWidth) {
             int targetHeight = Math.max(1,
                     Math.round(bitmap.getHeight() * (maxWidth / (float) bitmap.getWidth())));
-            Bitmap scaled = Bitmap.createScaledBitmap(bitmap, maxWidth, targetHeight, true);
-            if (scaled != bitmap) {
-                if (ownsBitmap) {
-                    bitmap.recycle();
-                }
-                bitmap = scaled;
-                ownsBitmap = true;
+            try {
+                bitmap = Bitmap.createScaledBitmap(bitmap, maxWidth, targetHeight, true);
+            } catch (Throwable t) {
+                // Config.HARDWARE bitmaps cannot be read back for scaling. Shipping
+                // the image at its original size is better than shipping none.
+                t.printStackTrace();
             }
         }
 
-        try {
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            bitmap.compress(webpFormat(), 92, stream);
-            return stream.toByteArray();
-        } finally {
-            if (ownsBitmap) {
-                bitmap.recycle();
-            }
-        }
+        // Deliberately no recycle() here. A BitmapDrawable obtained from the
+        // PackageManager can be backed by a bitmap the system's resource cache
+        // still owns and hands out again; freeing that by hand breaks icons
+        // process-wide. These bitmaps are short-lived, so leave them to the GC.
+        return compress(bitmap);
     }
 
+    /**
+     * WEBP, falling back to PNG.
+     *
+     * Deliberately uses the plain WEBP constant rather than the API 30
+     * WEBP_LOSSY one: a version-guarded enum constant is a linkage error waiting
+     * to happen on the wide range of Android TV builds this runs on, and the
+     * saving over WEBP is not worth that. Any failure still falls back to PNG so
+     * a card always gets bytes to show.
+     */
     @SuppressWarnings("deprecation")
-    private static Bitmap.CompressFormat webpFormat() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            return Bitmap.CompressFormat.WEBP_LOSSY;
+    private static byte[] compress(Bitmap bitmap) {
+        try {
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            if (bitmap.compress(Bitmap.CompressFormat.WEBP, 92, stream)) {
+                return stream.toByteArray();
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
         }
-        // WEBP is deprecated from API 30 on but is the only variant before it.
-        return Bitmap.CompressFormat.WEBP;
+
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+        return stream.toByteArray();
     }
 
     Bitmap drawableToBitmap(Drawable drawable, int maxWidth) {
@@ -892,8 +908,9 @@ public class MainActivity extends FlutterActivity {
             long usage;
             try {
                 usage = work.call();
-            } catch (Exception e) {
-                runOnUiThread(() -> result.error("NATIVE_ERROR", e.getMessage(), null));
+            } catch (Throwable t) {
+                t.printStackTrace();
+                runOnUiThread(() -> result.error("NATIVE_ERROR", String.valueOf(t), null));
                 return;
             }
             long value = usage;
