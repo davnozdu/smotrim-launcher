@@ -32,67 +32,16 @@ import 'package:pool/pool.dart';
 import '../models/app.dart';
 import '../models/category.dart';
 
-/// Insertion-ordered cache with a hard entry cap.
-///
-/// The icon and banner caches used to be plain unbounded maps: on a box with a
-/// large app list they grew until every decoded image was resident at once,
-/// which on a low-RAM TV stick is the difference between smooth scrolling and
-/// constant eviction churn.
-class _LruCache<K, V> {
-  _LruCache(this._maxEntries);
-
-  final int _maxEntries;
-  final Map<K, V> _entries = {};
-
-  bool containsKey(K key) => _entries.containsKey(key);
-
-  V? operator [](K key) {
-    final value = _entries.remove(key);
-    if (value == null) return null;
-    _entries[key] = value; // Re-insert so it counts as most recently used.
-    return value;
-  }
-
-  void operator []=(K key, V value) {
-    _entries.remove(key);
-    _entries[key] = value;
-    while (_entries.length > _maxEntries) {
-      _entries.remove(_entries.keys.first);
-    }
-  }
-
-  void remove(K key) => _entries.remove(key);
-
-  void clear() => _entries.clear();
-}
-
 class AppsService extends ChangeNotifier {
   final FLauncherChannel _fLauncherChannel;
   final FLauncherDatabase _database;
 
-  // Enough to cover a full screen of cards several times over, while staying
-  // bounded. Banners are the bigger of the two, hence the smaller cap.
-  static const int _iconCacheSize = 60;
-  static const int _bannerCacheSize = 40;
-
-  // A platform call that never answers must not leave a card spinning forever.
-  // The card degrades to the icon, and then to the app's name, instead.
-  static const Duration _imageLoadTimeout = Duration(seconds: 10);
-
   bool _initialized = false;
-  bool _disposed = false;
-  StreamSubscription? _appsChangedSubscription;
 
   List<LauncherSection> _launcherSections = List.empty(growable: true);
   Map<String, App> _applications = Map();
-  final _LruCache<String, Uint8List> _iconCache = _LruCache(_iconCacheSize);
-  final _LruCache<String, Uint8List> _bannerCache = _LruCache(_bannerCacheSize);
-  // In-flight platform requests, keyed by package name. Without these, the
-  // startup pre-cache and the card's own FutureBuilder each fire their own
-  // request for the same image before either completes, doubling the (costly)
-  // native decode work for every app on screen.
-  final Map<String, Future<Uint8List>> _iconRequests = {};
-  final Map<String, Future<Uint8List>> _bannerRequests = {};
+  Map<String, Uint8List> _iconCache = Map();
+  Map<String, Uint8List> _bannerCache = Map();
   // Bumped when an app's custom banner changes, so only the affected card
   // reloads its image (instead of every card on every notifyListeners()).
   final Map<String, int> _bannerVersions = {};
@@ -106,11 +55,6 @@ class AppsService extends ChangeNotifier {
   void _invalidateCategoryCache() {
     _categoriesByNameCache = null;
     _fallbackCategoryCache = null;
-    _categoriesViewCache = null;
-  }
-
-  void _invalidateApplicationsCache() {
-    _sortedApplicationsCache = null;
   }
 
   // Cached SharedPreferences instance to avoid repeated disk I/O
@@ -136,19 +80,12 @@ class AppsService extends ChangeNotifier {
     _pendingReorderFocusCategoryId = categoryId;
   }
 
-  // Both getters allocate, and both get read from build methods, so their result
-  // is memoised until something actually changes it.
-  List<App>? _sortedApplicationsCache;
-  List<Category>? _categoriesViewCache;
-
-  List<App> get applications => _sortedApplicationsCache ??= UnmodifiableListView(
+  List<App> get applications => UnmodifiableListView(
       _applications.values.sortedBy((application) => application.name));
 
   List<LauncherSection> get launcherSections =>
       List.unmodifiable(_launcherSections);
-
-  List<Category> get categories => _categoriesViewCache ??= _categoriesById
-      .values
+  List<Category> get categories => _categoriesById.values
       .map((category) => category.unmodifiable())
       .toList(growable: false);
 
@@ -156,43 +93,15 @@ class AppsService extends ChangeNotifier {
     _init();
   }
 
-  @override
-  void dispose() {
-    _disposed = true;
-    _appsChangedSubscription?.cancel();
-    _iconCache.clear();
-    _bannerCache.clear();
-    super.dispose();
-  }
-
-  // Platform events and in-flight database writes can land after the provider is
-  // gone; notifying then throws instead of being a harmless no-op.
-  @override
-  void notifyListeners() {
-    if (_disposed) return;
-    super.notifyListeners();
-  }
-
   Future<void> _init() async {
-    // Anything that throws in here used to leave `_initialized` false forever,
-    // which the home screen renders as a loading spinner that never goes away.
-    // A partially-initialised launcher beats a permanently blank one.
-    try {
-      await _refreshState(shouldNotifyListeners: false);
-      if (_database.wasCreated) {
-        await _initDefaultCategories();
-      } else {
-        await _migrateFavoritesFirst();
-      }
-    } catch (e, stackTrace) {
-      debugPrint("AppsService init failed: $e");
-      debugPrintStack(stackTrace: stackTrace);
+    await _refreshState(shouldNotifyListeners: false);
+    if (_database.wasCreated) {
+      await _initDefaultCategories();
+    } else {
+      await _migrateFavoritesFirst();
     }
 
-    _appsChangedSubscription =
-        _fLauncherChannel.addAppsChangedListener((event) async {
-      if (_disposed) return;
-      _invalidateApplicationsCache();
+    _fLauncherChannel.addAppsChangedListener((event) async {
       String? changedPackageName;
       if (event.containsKey('packageName')) {
         changedPackageName = event['packageName'];
@@ -302,28 +211,20 @@ class AppsService extends ChangeNotifier {
   }
 
   Future<void> _preCacheIcons() async {
-    // Only cache apps that are not hidden. Capped at the cache size: warming
-    // more than the cache holds would just evict what was warmed first, and
-    // every extra entry is native decode work competing with the first frame.
-    final visibleApps = _applications.values
-        .where((app) => !app.hidden)
-        .take(_bannerCacheSize)
-        .toList();
-    final pool = Pool(4);
-    try {
-      await Future.wait(visibleApps.map((app) => pool.withResource(() async {
-            // Warm only what the card actually shows: the banner, or the icon
-            // only when there is no banner. Requests are de-duplicated against
-            // the cards' own loads, so this never doubles the work.
-            final banner = await getAppBanner(app.packageName);
-            if (banner.isEmpty) {
-              await getAppIcon(app.packageName);
-            }
-          })));
-    } catch (e) {
-      debugPrint("Icon pre-cache failed: $e");
-    } finally {
-      await pool.close();
+    // Only cache apps that are not hidden
+    final visibleApps =
+        _applications.values.where((app) => !app.hidden).toList();
+    final pool = Pool(10);
+    for (var app in visibleApps) {
+      // Warm only what the card actually shows: the banner, or the icon only
+      // when there is no banner. Avoids fetching/decoding both for every app.
+      // Runs in the background with a concurrency limit (not awaited).
+      pool.withResource(() async {
+        final banner = await getAppBanner(app.packageName);
+        if (banner.isEmpty) {
+          await getAppIcon(app.packageName);
+        }
+      });
     }
   }
 
@@ -390,6 +291,7 @@ class AppsService extends ChangeNotifier {
   }
 
   Future<void> _refreshState({bool shouldNotifyListeners = true}) async {
+    Future<List<App>> appsFromDatabaseFuture = _database.getApplications();
     Future<List<AppCategory>> appsCategoriesFuture =
         _database.getAppsCategories();
     Future<List<Category>> categoriesFuture = _database.getCategories();
@@ -408,10 +310,7 @@ class AppsService extends ChangeNotifier {
           appsFromSystemByPackageName.values.map((record) => record.$2));
     });
 
-    // Read the apps back only after persisting, so the rows reflect what the
-    // system just reported. (This query used to be issued twice: once before
-    // the write — whose result was silently discarded — and once after.)
-    Future<List<App>> appsFromDatabaseFuture = _database.getApplications();
+    appsFromDatabaseFuture = _database.getApplications();
 
     await Future.wait([
       appsFromDatabaseFuture,
@@ -428,7 +327,6 @@ class AppsService extends ChangeNotifier {
     _categoriesById = Map.fromEntries(
         categories.map((category) => MapEntry(category.id, category)));
     _invalidateCategoryCache();
-    _invalidateApplicationsCache();
     _applications = Map.fromEntries(appsFromDatabase
         .where((application) =>
             appsFromSystemByPackageName.containsKey(application.packageName))
@@ -513,28 +411,25 @@ class AppsService extends ChangeNotifier {
       for (var c in _categoriesById.values) {
         _categoriesByNameCache!.putIfAbsent(c.name.toLowerCase(), () => c);
       }
-      _fallbackCategoryCache = _categoriesById.values.firstWhere(
-        (c) => c.name.toLowerCase() != 'favorites',
-        orElse: () => _categoriesById.values.first,
-      );
+      try {
+        _fallbackCategoryCache = _categoriesById.values.firstWhere(
+          (c) => c.name.toLowerCase() != 'favorites',
+          orElse: () => _categoriesById.values.first,
+        );
+      } catch (_) {
+        _fallbackCategoryCache = null;
+      }
     }
 
     final targetName = isSideloaded ? "non-tv apps" : "tv apps";
     return _categoriesByNameCache![targetName] ?? _fallbackCategoryCache;
   }
 
-  Future<Uint8List> getAppBanner(String packageName) {
-    final cached = _bannerCache[packageName];
-    if (cached != null) {
-      return SynchronousFuture(cached);
+  Future<Uint8List> getAppBanner(String packageName) async {
+    if (_bannerCache.containsKey(packageName)) {
+      return _bannerCache[packageName]!;
     }
-    // Join an identical request that is already in flight instead of issuing a
-    // second one.
-    return _bannerRequests[packageName] ??= _loadAppBanner(packageName)
-        .whenComplete(() => _bannerRequests.remove(packageName));
-  }
 
-  Future<Uint8List> _loadAppBanner(String packageName) async {
     try {
       final prefs = await _prefsAsync;
       final customBannerPath = prefs.getString('custom_banner_$packageName');
@@ -554,19 +449,10 @@ class AppsService extends ChangeNotifier {
       // Ignore other errors reading custom banner
     }
 
-    final Uint8List bytes;
-    try {
-      bytes = await _fLauncherChannel
-          .getApplicationBanner(packageName)
-          .timeout(_imageLoadTimeout);
-    } catch (_) {
-      // A failed platform call must not surface as an unhandled error; the card
-      // falls back to the icon (and then to the app name) on empty bytes.
-      return Uint8List(0);
+    final bytes = await _fLauncherChannel.getApplicationBanner(packageName);
+    if (bytes.isNotEmpty) {
+      _bannerCache[packageName] = bytes;
     }
-    // "No banner" is cached too: otherwise every rebuild of a banner-less card
-    // went back across the platform channel for the same empty answer.
-    _bannerCache[packageName] = bytes;
     return bytes;
   }
 
@@ -599,57 +485,31 @@ class AppsService extends ChangeNotifier {
     return prefs.containsKey('custom_banner_$packageName');
   }
 
-  Future<Uint8List> getAppIcon(String packageName) {
-    final cached = _iconCache[packageName];
-    if (cached != null) {
-      return SynchronousFuture(cached);
+  Future<Uint8List> getAppIcon(String packageName) async {
+    if (_iconCache.containsKey(packageName)) {
+      return _iconCache[packageName]!;
     }
-    return _iconRequests[packageName] ??= _loadAppIcon(packageName)
-        .whenComplete(() => _iconRequests.remove(packageName));
-  }
-
-  Future<Uint8List> _loadAppIcon(String packageName) async {
-    final Uint8List bytes;
-    try {
-      bytes = await _fLauncherChannel
-          .getApplicationIcon(packageName)
-          .timeout(_imageLoadTimeout);
-    } catch (_) {
-      return Uint8List(0);
+    final bytes = await _fLauncherChannel.getApplicationIcon(packageName);
+    if (bytes.isNotEmpty) {
+      _iconCache[packageName] = bytes;
     }
-    _iconCache[packageName] = bytes;
     return bytes;
   }
 
   Future<void> launchApp(App app) async {
     app.lastLaunchedAt = DateTime.now();
+    await _database.updateApp(app.packageName,
+        AppsCompanion(lastLaunchedAt: Value(app.lastLaunchedAt)));
+    notifyListeners();
 
-    // Start the app first: the user pressed OK and everything else can wait.
-    // Persisting the timestamp used to be awaited before the intent was even
-    // sent, and the notify that followed rebuilt the whole home screen at the
-    // exact moment responsiveness matters most.
-    final Future<void> launch = app.action == null
-        ? _fLauncherChannel.launchApp(app.packageName)
-        : _fLauncherChannel.launchActivityFromAction(app.action!);
+    Future<void> future;
+    if (app.action == null) {
+      future = _fLauncherChannel.launchApp(app.packageName);
+    } else {
+      future = _fLauncherChannel.launchActivityFromAction(app.action!);
+    }
 
-    unawaited(_database
-        .updateApp(app.packageName,
-            AppsCompanion(lastLaunchedAt: Value(app.lastLaunchedAt)))
-        .then((_) {
-      // Only a "recently used" category actually renders this value, so there
-      // is nothing to repaint otherwise.
-      if (_categoriesById.values
-          .any((category) => category.sort == CategorySort.lastUsed)) {
-        for (final category in _categoriesById.values) {
-          if (category.sort == CategorySort.lastUsed) sortCategory(category);
-        }
-        notifyListeners();
-      }
-    }).catchError((Object e) {
-      debugPrint("Could not record last launch of ${app.packageName}: $e");
-    }));
-
-    return launch;
+    return future;
   }
 
   Future<void> openAppInfo(App app) =>
@@ -680,15 +540,7 @@ class AppsService extends ChangeNotifier {
     int nextOrder = await _database.nextAppCategoryOrder(categoryFound.id) ?? 0;
     List<AppsCategoriesCompanion> batch = [];
 
-    // The database insert ignores conflicts, but the in-memory list did not:
-    // re-adding an app (e.g. via autoPopulateCategory) duplicated its card.
-    final existing = categoryFound.applications
-        .map((application) => application.packageName)
-        .toSet();
-
     for (final app in apps) {
-      if (!existing.add(app.packageName)) continue;
-
       batch.add(AppsCategoriesCompanion.insert(
         categoryId: categoryFound.id,
         appPackageName: app.packageName,
@@ -698,8 +550,6 @@ class AppsService extends ChangeNotifier {
       categoryFound.applications.add(app);
       nextOrder++;
     }
-
-    if (batch.isEmpty) return;
 
     await _database.insertAppsCategories(batch);
 
@@ -829,11 +679,7 @@ class AppsService extends ChangeNotifier {
 
   Future<void> moveAppToAdjacentCategory(
       App app, Category currentCategory, AxisDirection direction) async {
-    // Match on id, not identity: the public `categories` getter hands out
-    // unmodifiable copies and Category does not override ==, so indexOf() on a
-    // caller-supplied category silently found nothing.
-    int currentSectionIndex = _launcherSections.indexWhere((section) =>
-        section is Category && section.id == currentCategory.id);
+    int currentSectionIndex = _launcherSections.indexOf(currentCategory);
     if (currentSectionIndex == -1) {
       return;
     }
@@ -916,37 +762,39 @@ class AppsService extends ChangeNotifier {
       int rowHeight = Category.RowHeight,
       bool shouldNotifyListeners = true}) async {
     int order = _launcherSections.length;
+    int newCategoryId = -1;
 
-    // Failures used to be swallowed and reported as id -1, which callers then
-    // dereferenced with `!` and crashed on. Let the error propagate instead.
-    final int newCategoryId = await _database.transaction(() async {
-      return await _database.insertCategory(
-          CategoriesCompanion.insert(
-            name: categoryName,
-            order: order,
-            sort: Value(sort),
-            type: Value(type),
-            columnsCount: Value(columnsCount),
-            rowHeight: Value(rowHeight),
-          ));
-    });
+    try {
+      newCategoryId = await _database.transaction(() async {
+        int newCategoryId = await _database.insertCategory(
+            CategoriesCompanion.insert(
+              name: categoryName,
+              order: order,
+              sort: Value(sort),
+              type: Value(type),
+              columnsCount: Value(columnsCount),
+              rowHeight: Value(rowHeight),
+            ));
+        return newCategoryId;
+      });
 
-    Category newCategory = Category(
-        id: newCategoryId,
-        name: categoryName,
-        sort: sort,
-        type: type,
-        columnsCount: columnsCount,
-        rowHeight: rowHeight,
-        order: order);
+      Category newCategory = Category(
+          id: newCategoryId,
+          name: categoryName,
+          sort: sort,
+          type: type,
+          columnsCount: columnsCount,
+          rowHeight: rowHeight,
+          order: order);
 
-    _categoriesById[newCategoryId] = newCategory;
-    _invalidateCategoryCache();
-    _launcherSections.add(newCategory);
+      _categoriesById[newCategoryId] = newCategory;
+      _invalidateCategoryCache();
+      _launcherSections.add(newCategory);
 
-    if (shouldNotifyListeners) {
-      notifyListeners();
-    }
+      if (shouldNotifyListeners) {
+        notifyListeners();
+      }
+    } catch (ex) {}
 
     return newCategoryId;
   }
@@ -1102,15 +950,10 @@ class AppsService extends ChangeNotifier {
     if (applicationFound != null) {
       applicationFound.hidden = false;
 
-      // Always re-insert the instance this service owns. Putting the caller's
-      // (possibly stale) copy into a category left the category holding an
-      // object that later updates would no longer touch.
-      for (int categoryId in applicationFound.categoryOrders.keys) {
+      for (int categoryId in application.categoryOrders.keys) {
         final category = _categoriesById[categoryId];
         if (category != null) {
-          if (!category.applications.contains(applicationFound)) {
-            category.applications.add(applicationFound);
-          }
+          category.applications.add(application);
           sortCategory(category);
         }
       }
@@ -1127,7 +970,6 @@ class AppsService extends ChangeNotifier {
     final categoryFound = _categoriesById[category.id];
     if (categoryFound != null) {
       categoryFound.type = type;
-      _invalidateCategoryCache();
 
       if (shouldNotifyListeners) {
         notifyListeners();
@@ -1141,7 +983,6 @@ class AppsService extends ChangeNotifier {
     final categoryFound = _categoriesById[category.id];
     if (categoryFound != null) {
       categoryFound.sort = sort;
-      _invalidateCategoryCache();
       sortCategory(categoryFound);
 
       notifyListeners();
@@ -1156,7 +997,6 @@ class AppsService extends ChangeNotifier {
     final categoryFound = _categoriesById[category.id];
     if (categoryFound != null) {
       categoryFound.columnsCount = columnsCount;
-      _invalidateCategoryCache();
 
       notifyListeners();
     }
@@ -1169,7 +1009,6 @@ class AppsService extends ChangeNotifier {
     final categoryFound = _categoriesById[category.id];
     if (categoryFound != null) {
       categoryFound.rowHeight = rowHeight;
-      _invalidateCategoryCache();
       notifyListeners();
     }
   }

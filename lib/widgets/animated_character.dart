@@ -87,21 +87,14 @@ class AnimatedTimeDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final characters = displayText.split('');
-    return RepaintBoundary(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < characters.length; i++)
-            AnimatedCharacter(
-              // Keyed by position so each slot keeps its own switcher when the
-              // surrounding text changes length.
-              key: ValueKey<int>(i),
-              character: characters[i],
-              textStyle: textStyle,
-            ),
-        ],
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: displayText.split('').map((char) {
+        return AnimatedCharacter(
+          character: char,
+          textStyle: textStyle,
+        );
+      }).toList(),
     );
   }
 }

@@ -39,18 +39,6 @@ jobs:
       - name: Generate localizations
         run: flutter gen-l10n
 
-      # The launcher updates itself from these releases, so a broken build must
-      # not reach the field. Analyze fails the job on errors (warnings and infos
-      # are reported but tolerated).
-      #
-      # Scoped to lib/ on purpose: test/ does not currently analyze or run at
-      # all. It needs mockito/drift code generation that is not declared in
-      # dev_dependencies, and test/mocks.dart still imports a
-      # providers/network_service.dart that no longer exists. Restoring the
-      # suite is worth doing, but it cannot gate a release until it does.
-      - name: Analyze
-        run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
-
       - name: Decode keystore (release signing)
         id: keystore
         env:

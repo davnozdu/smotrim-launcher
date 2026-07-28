@@ -90,14 +90,7 @@ class AppsCategories extends Table
 @DriftDatabase(tables: [Apps, Categories, AppsCategories, LauncherSpacers])
 class FLauncherDatabase extends _$FLauncherDatabase
 {
-  // Nullable-backed rather than `late final`: reading it before the database has
-  // been opened used to throw a LateInitializationError instead of just being
-  // "not a fresh install yet".
-  bool? _wasCreated;
-
-  bool get wasCreated => _wasCreated ?? false;
-
-  set wasCreated(bool value) => _wasCreated = value;
+  late final bool wasCreated;
 
   FLauncherDatabase(DatabaseConnection super.databaseConnection);
 
@@ -270,16 +263,8 @@ class FLauncherDatabase extends _$FLauncherDatabase
   }
 }
 
-/// Opens the launcher database on a background isolate.
-///
-/// A plain [NativeDatabase] executes every statement on the isolate that calls
-/// it — the UI isolate — so each query blocked frame production. Running the
-/// executor off-isolate keeps reads and writes away from the render loop; the
-/// migration callbacks above still run here and talk to it over a port.
 DatabaseConnection connect() => DatabaseConnection.delayed(() async {
       final dbFolder = await getApplicationDocumentsDirectory();
       final file = File(path.join(dbFolder.path, 'db.sqlite'));
-      final executor = await NativeDatabase.createInBackground(file,
-          logStatements: foundation.kDebugMode);
-      return DatabaseConnection(executor);
+      return DatabaseConnection(NativeDatabase(file, logStatements: foundation.kDebugMode));
     }());

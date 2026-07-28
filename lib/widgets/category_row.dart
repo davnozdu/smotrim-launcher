@@ -26,9 +26,6 @@ import '../models/app.dart';
 import '../models/category.dart';
 import '../providers/settings_service.dart';
 
-/// A row category, rendered as a sliver so the home screen can build it lazily.
-/// The row itself is a horizontal [ListView], which is already lazy along its
-/// own axis.
 class CategoryRow extends StatelessWidget
 {
   final Category category;
@@ -36,7 +33,7 @@ class CategoryRow extends StatelessWidget
 
   final bool isFirstSection;
 
-  const CategoryRow({
+  CategoryRow({
     Key? key,
     required this.category,
     required this.applications,
@@ -78,40 +75,34 @@ class CategoryRow extends StatelessWidget
       );
     }
 
-    return SliverMainAxisGroup(
-      slivers: [
-        SliverToBoxAdapter(
-          child: Selector<SettingsService, bool>(
-            selector: (context, service) => service.showCategoryTitles,
-            builder: (context, showCategoriesTitle, _) {
-              if (showCategoriesTitle) {
-                return Padding(
-                  padding: const EdgeInsets.only(left: 16, bottom: 8),
-                  child: Text(localizedCategoryName(context, category.name),
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge!
-                        .copyWith(shadows: [const Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 8)])
-                  ),
-                );
-              }
-
-              return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Selector<SettingsService, bool>(
+          selector: (context, service) => service.showCategoryTitles,
+          builder: (context, showCategoriesTitle, _) {
+            if (showCategoriesTitle) {
+              return Padding(
+                padding: const EdgeInsets.only(left: 16, bottom: 8),
+                child: Text(localizedCategoryName(context, category.name),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge!
+                      .copyWith(shadows: [const Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 8)])
+                ),
+              );
             }
-          ),
+
+            return SizedBox.shrink();
+          }
         ),
-        SliverToBoxAdapter(child: categoryContent)
+        categoryContent
       ],
     );
   }
 
-  // Must return null (not -1) when the app is gone, otherwise the sliver
-  // remaps the element to a nonexistent index instead of discarding it.
-  int? _findChildIndex(Key key) {
-    if (key is! ValueKey<String>) return null;
-    final index = applications.indexWhere((app) => app.packageName == key.value);
-    return index >= 0 ? index : null;
-  }
+  int _findChildIndex(Key key) =>
+      applications.indexWhere((app) => app.packageName == (key as ValueKey<String>).value);
 
   void _onMove(BuildContext context, AxisDirection direction, int index) {
     int newIndex = 0;

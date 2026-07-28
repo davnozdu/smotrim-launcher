@@ -42,9 +42,15 @@ import android.media.tv.TvContract;
 
 import androidx.annotation.NonNull;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.io.ByteArrayOutputStream;
 import android.app.usage.NetworkStats;
 import android.app.usage.NetworkStatsManager;
 import android.app.AppOpsManager;
+import android.os.RemoteException;
 
 import io.flutter.embedding.android.FlutterActivity;
 import io.flutter.embedding.engine.FlutterEngine;
@@ -58,7 +64,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
@@ -75,52 +80,6 @@ public class MainActivity extends FlutterActivity {
     private final String NETWORK_EVENT_CHANNEL = "cz.smotrim.launcher/event_network";
     private final String NOTIFICATIONS_EVENT_CHANNEL = "cz.smotrim.launcher/event_notifications";
 
-    // Queries against PackageManager (labels, icons, banners) hit the disk and
-    // encode bitmaps, which is far too slow for the Android main thread: doing it
-    // there stalls input dispatch and risks an ANR on a low-end TV box. Everything
-    // expensive runs here instead and the result is posted back to the main thread.
-    private ExecutorService channelExecutor;
-
-    private synchronized ExecutorService channelExecutor() {
-        if (channelExecutor == null || channelExecutor.isShutdown()) {
-            channelExecutor = Executors.newFixedThreadPool(4);
-        }
-        return channelExecutor;
-    }
-
-    /**
-     * Runs [work] off the main thread and completes [result] back on it.
-     *
-     * Catches Throwable, not Exception: bitmap work can raise OutOfMemoryError,
-     * and a linkage error is possible whenever an API is version-guarded. Those
-     * are Errors, so catching Exception let the worker thread die silently with
-     * the result never completed — which the Dart side cannot distinguish from a
-     * call still in progress, leaving the caller's Future pending forever.
-     * Every path through here must complete the result exactly once.
-     */
-    private <T> void runAsync(Callable<T> work, MethodChannel.Result result) {
-        channelExecutor().execute(() -> {
-            T value;
-            try {
-                value = work.call();
-            } catch (Throwable t) {
-                t.printStackTrace();
-                runOnUiThread(() -> result.error("NATIVE_ERROR", String.valueOf(t), null));
-                return;
-            }
-            runOnUiThread(() -> result.success(value));
-        });
-    }
-
-    @Override
-    protected void onDestroy() {
-        if (channelExecutor != null) {
-            channelExecutor.shutdownNow();
-            channelExecutor = null;
-        }
-        super.onDestroy();
-    }
-
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
         super.configureFlutterEngine(flutterEngine);
@@ -129,15 +88,9 @@ public class MainActivity extends FlutterActivity {
 
         new MethodChannel(messenger, METHOD_CHANNEL).setMethodCallHandler((call, result) -> {
             switch (call.method) {
-                case "getApplications" -> runAsync(this::getApplications, result);
-                case "getApplicationBanner" -> {
-                    String packageName = call.arguments();
-                    runAsync(() -> getApplicationBanner(packageName), result);
-                }
-                case "getApplicationIcon" -> {
-                    String packageName = call.arguments();
-                    runAsync(() -> getApplicationIcon(packageName), result);
-                }
+                case "getApplications" -> result.success(getApplications());
+                case "getApplicationBanner" -> result.success(getApplicationBanner(call.arguments()));
+                case "getApplicationIcon" -> result.success(getApplicationIcon(call.arguments()));
                 case "launchActivityFromAction" -> result.success(launchActivityFromAction(call.arguments()));
                 case "launchApp" -> result.success(launchApp(call.arguments()));
                 case "openSettings" -> result.success(openSettings());
@@ -156,12 +109,31 @@ public class MainActivity extends FlutterActivity {
                 case "isDefaultLauncher" -> result.success(isDefaultLauncher());
                 case "checkForGetContentAvailability" -> result.success(checkForGetContentAvailability());
                 case "startAmbientMode" -> result.success(startAmbientMode());
-                case "getActiveNetworkInformation" -> runAsync(this::getActiveNetworkInformation, result);
-                // NetworkStatsManager queries are slow enough to drop frames; keep
-                // them off the main thread like the PackageManager calls above.
-                case "getDailyDataUsage" -> runDataUsageAsync(this::getDailyDataUsage, result);
-                case "getWeeklyDataUsage" -> runDataUsageAsync(this::getWeeklyDataUsage, result);
-                case "getMonthlyDataUsage" -> runDataUsageAsync(this::getMonthlyDataUsage, result);
+                case "getActiveNetworkInformation" -> result.success(getActiveNetworkInformation());
+                case "getDailyDataUsage" -> {
+                    long usage = getDailyDataUsage();
+                    if (usage == -1) {
+                        result.error("PERMISSION_DENIED", "Usage stats permission not granted", null);
+                    } else {
+                        result.success(usage);
+                    }
+                }
+                case "getWeeklyDataUsage" -> {
+                    long usage = getWeeklyDataUsage();
+                    if (usage == -1) {
+                        result.error("PERMISSION_DENIED", "Usage stats permission not granted", null);
+                    } else {
+                        result.success(usage);
+                    }
+                }
+                case "getMonthlyDataUsage" -> {
+                    long usage = getMonthlyDataUsage();
+                    if (usage == -1) {
+                        result.error("PERMISSION_DENIED", "Usage stats permission not granted", null);
+                    } else {
+                        result.success(usage);
+                    }
+                }
                 case "checkUsageStatsPermission" -> result.success(checkUsageStatsPermission());
                 case "requestUsageStatsPermission" -> {
                     requestUsageStatsPermission();
@@ -185,9 +157,7 @@ public class MainActivity extends FlutterActivity {
                 case "getActiveNotifications" -> result.success(getActiveNotifications());
                 case "checkOverlayPermission" -> result.success(checkOverlayPermission());
                 case "requestOverlayPermission" -> result.success(requestOverlayPermission());
-                // Throwing here surfaced as an opaque channel error; notImplemented()
-                // is what the Dart side can actually reason about.
-                default -> result.notImplemented();
+                default -> throw new IllegalArgumentException();
             }
         });
 
@@ -229,17 +199,7 @@ public class MainActivity extends FlutterActivity {
     }
 
     private List<Map<String, Serializable>> getApplications() {
-        // A dedicated pool: this method already runs on channelExecutor and blocks
-        // waiting for its own tasks, so reusing that pool could deadlock it.
         ExecutorService executor = Executors.newFixedThreadPool(4);
-        try {
-            return getApplications(executor);
-        } finally {
-            executor.shutdown();
-        }
-    }
-
-    private List<Map<String, Serializable>> getApplications(ExecutorService executor) {
         CompletionService<Pair<Boolean, List<ResolveInfo>>> queryIntentActivitiesCompletionService = new ExecutorCompletionService<>(
                 executor);
         queryIntentActivitiesCompletionService.submit(() -> Pair.create(false, queryIntentActivities(false)));
@@ -263,41 +223,37 @@ public class MainActivity extends FlutterActivity {
             }
         }
 
-        // A failed query leaves its list null; without this the code below used to
-        // throw an NPE, which killed the channel call and left the launcher stuck
-        // on its loading spinner forever.
-        if (tvActivitiesInfo == null) {
-            tvActivitiesInfo = new ArrayList<>();
-        }
-        if (nonTvActivitiesInfo == null) {
-            nonTvActivitiesInfo = new ArrayList<>();
-        }
-
         CompletionService<Map<String, Serializable>> completionService = new ExecutorCompletionService<>(executor);
 
         List<Map<String, Serializable>> applications = new ArrayList<>(
                 tvActivitiesInfo.size() + nonTvActivitiesInfo.size());
 
-        // Package names of the TV activities, so the sideloaded pass can skip
-        // duplicates with a hash lookup instead of a nested scan.
-        java.util.Set<String> tvPackageNames = new java.util.HashSet<>();
-        for (ResolveInfo tvActivityInfo : tvActivitiesInfo) {
-            tvPackageNames.add(tvActivityInfo.activityInfo.packageName);
-        }
-
-        boolean settingsPresent = tvPackageNames.contains("com.android.tv.settings");
+        boolean settingsPresent = false;
         int appCount = 0;
         for (ResolveInfo tvActivityInfo : tvActivitiesInfo) {
+            if (!settingsPresent) {
+                settingsPresent = tvActivityInfo.activityInfo.packageName.equals("com.android.tv.settings");
+            }
+
             completionService.submit(() -> buildAppMap(tvActivityInfo.activityInfo, false, null));
             appCount += 1;
         }
 
         for (ResolveInfo nonTvActivityInfo : nonTvActivitiesInfo) {
+            boolean nonDuplicate = true;
+
             if (!settingsPresent) {
                 settingsPresent = nonTvActivityInfo.activityInfo.packageName.equals("com.android.settings");
             }
 
-            if (!tvPackageNames.contains(nonTvActivityInfo.activityInfo.packageName)) {
+            for (ResolveInfo tvActivityInfo : tvActivitiesInfo) {
+                if (tvActivityInfo.activityInfo.packageName.equals(nonTvActivityInfo.activityInfo.packageName)) {
+                    nonDuplicate = false;
+                    break;
+                }
+            }
+
+            if (nonDuplicate) {
                 appCount += 1;
                 completionService.submit(() -> buildAppMap(nonTvActivityInfo.activityInfo, true, null));
             }
@@ -312,6 +268,8 @@ public class MainActivity extends FlutterActivity {
                 appCount -= 1;
             }
         }
+
+        executor.shutdown();
 
         if (!settingsPresent) {
             PackageManager packageManager = getPackageManager();
@@ -346,11 +304,6 @@ public class MainActivity extends FlutterActivity {
         return map;
     }
 
-    // The launcher never draws these larger than a card on a 1080p TV, so there is
-    // no point shipping (or encoding) anything bigger across the channel.
-    private static final int MAX_BANNER_WIDTH = 512;
-    private static final int MAX_ICON_WIDTH = 192;
-
     private byte[] getApplicationBanner(String packageName) {
         byte[] imageBytes = new byte[0];
 
@@ -360,7 +313,7 @@ public class MainActivity extends FlutterActivity {
             Drawable drawable = info.loadBanner(packageManager);
 
             if (drawable != null) {
-                imageBytes = drawableToByteArray(drawable, MAX_BANNER_WIDTH);
+                imageBytes = drawableToByteArray(drawable);
             }
         } catch (PackageManager.NameNotFoundException ignored) {
         }
@@ -377,7 +330,7 @@ public class MainActivity extends FlutterActivity {
             Drawable drawable = info.loadIcon(packageManager);
 
             if (drawable != null) {
-                imageBytes = drawableToByteArray(drawable, MAX_ICON_WIDTH);
+                imageBytes = drawableToByteArray(drawable);
             }
         } catch (PackageManager.NameNotFoundException ignored) {
         }
@@ -783,84 +736,27 @@ public class MainActivity extends FlutterActivity {
         return success;
     }
 
-    /**
-     * Encodes [drawable] for the Dart side, downscaled to at most [maxWidth].
-     *
-     * This used to PNG-encode the drawable at its full intrinsic size, which was
-     * the single most expensive thing the launcher did at startup — lossless PNG
-     * of a full-resolution banner costs tens of milliseconds each, multiplied by
-     * every installed app. Scaling first and encoding WEBP is an order of
-     * magnitude cheaper and produces far fewer bytes to ship over the channel,
-     * with no visible difference on a TV card.
-     */
-    private byte[] drawableToByteArray(Drawable drawable, int maxWidth) {
+    private byte[] drawableToByteArray(Drawable drawable) {
         if (drawable.getIntrinsicWidth() <= 0 || drawable.getIntrinsicHeight() <= 0) {
             return new byte[0];
         }
 
         Bitmap bitmap;
-        if (drawable instanceof BitmapDrawable bitmapDrawable && bitmapDrawable.getBitmap() != null) {
+        if (drawable instanceof BitmapDrawable bitmapDrawable) {
             bitmap = bitmapDrawable.getBitmap();
         } else {
-            // Rasterise straight at the target size, so a vector or adaptive icon
-            // never allocates a full-size bitmap just to be scaled down after.
-            bitmap = drawableToBitmap(drawable, maxWidth);
+            bitmap = drawableToBitmap(drawable);
         }
-
-        if (bitmap.getWidth() > maxWidth) {
-            int targetHeight = Math.max(1,
-                    Math.round(bitmap.getHeight() * (maxWidth / (float) bitmap.getWidth())));
-            try {
-                bitmap = Bitmap.createScaledBitmap(bitmap, maxWidth, targetHeight, true);
-            } catch (Throwable t) {
-                // Config.HARDWARE bitmaps cannot be read back for scaling. Shipping
-                // the image at its original size is better than shipping none.
-                t.printStackTrace();
-            }
-        }
-
-        // Deliberately no recycle() here. A BitmapDrawable obtained from the
-        // PackageManager can be backed by a bitmap the system's resource cache
-        // still owns and hands out again; freeing that by hand breaks icons
-        // process-wide. These bitmaps are short-lived, so leave them to the GC.
-        return compress(bitmap);
-    }
-
-    /**
-     * WEBP, falling back to PNG.
-     *
-     * Deliberately uses the plain WEBP constant rather than the API 30
-     * WEBP_LOSSY one: a version-guarded enum constant is a linkage error waiting
-     * to happen on the wide range of Android TV builds this runs on, and the
-     * saving over WEBP is not worth that. Any failure still falls back to PNG so
-     * a card always gets bytes to show.
-     */
-    @SuppressWarnings("deprecation")
-    private static byte[] compress(Bitmap bitmap) {
-        try {
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            if (bitmap.compress(Bitmap.CompressFormat.WEBP, 92, stream)) {
-                return stream.toByteArray();
-            }
-        } catch (Throwable t) {
-            t.printStackTrace();
-        }
-
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
         return stream.toByteArray();
     }
 
-    Bitmap drawableToBitmap(Drawable drawable, int maxWidth) {
-        int width = drawable.getIntrinsicWidth();
-        int height = drawable.getIntrinsicHeight();
-
-        if (width > maxWidth) {
-            height = Math.max(1, Math.round(height * (maxWidth / (float) width)));
-            width = maxWidth;
-        }
-
-        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+    Bitmap drawableToBitmap(Drawable drawable) {
+        Bitmap bitmap = Bitmap.createBitmap(
+                drawable.getIntrinsicWidth(),
+                drawable.getIntrinsicHeight(),
+                Bitmap.Config.ARGB_8888);
 
         Canvas canvas = new Canvas(bitmap);
         drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
@@ -900,28 +796,6 @@ public class MainActivity extends FlutterActivity {
             e.printStackTrace();
         }
         return -1;
-    }
-
-    /** Same as [runAsync], but maps the -1 "no permission" sentinel to a channel error. */
-    private void runDataUsageAsync(Callable<Long> work, MethodChannel.Result result) {
-        channelExecutor().execute(() -> {
-            long usage;
-            try {
-                usage = work.call();
-            } catch (Throwable t) {
-                t.printStackTrace();
-                runOnUiThread(() -> result.error("NATIVE_ERROR", String.valueOf(t), null));
-                return;
-            }
-            long value = usage;
-            runOnUiThread(() -> {
-                if (value == -1) {
-                    result.error("PERMISSION_DENIED", "Usage stats permission not granted", null);
-                } else {
-                    result.success(value);
-                }
-            });
-        });
     }
 
     private long getDailyDataUsage() {

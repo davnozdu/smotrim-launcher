@@ -66,20 +66,11 @@ public class NetworkEventStreamHandler implements EventChannel.StreamHandler
 
     @Override
     public void onCancel(Object arguments) {
-        // Registration in onListen can fail, leaving these null; unregistering a
-        // null callback (or a receiver that was never registered) throws.
-        try {
-            if (_networkCallback != null) {
-                _connectivityManager.unregisterNetworkCallback(_networkCallback);
-                _networkCallback = null;
-            }
-            if (_networkChangeReceiver != null) {
-                _context.unregisterReceiver(_networkChangeReceiver);
-                _networkChangeReceiver = null;
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            _connectivityManager.unregisterNetworkCallback(_networkCallback);
         }
-        catch (RuntimeException e) {
-            e.printStackTrace();
+        else {
+            _context.unregisterReceiver(_networkChangeReceiver);
         }
     }
 

@@ -18,13 +18,11 @@
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class FLauncherChannel {
   static const _methodChannel = MethodChannel('cz.smotrim.launcher/method');
   static const _appsEventChannel = EventChannel('cz.smotrim.launcher/event_apps');
-  static const _networkEventChannel = EventChannel('cz.smotrim.launcher/event_network');
   static const _notificationsEventChannel = EventChannel('cz.smotrim.launcher/event_notifications');
 
   Future<List<Map<dynamic, dynamic>>> getApplications() async {
@@ -93,39 +91,6 @@ class FLauncherChannel {
     return (map as Map).cast<String, dynamic>();
   }
 
-  /// Pushes the same map as [getActiveNetworkInformation] whenever the active
-  /// network changes, so callers do not have to poll for it.
-  StreamSubscription addNetworkChangedListener(
-          void Function(Map<String, dynamic>) listener) =>
-      _networkEventChannel.receiveBroadcastStream().listen(
-        (event) {
-          if (event is Map) listener(event.cast<String, dynamic>());
-        },
-        onError: (Object error) {
-          debugPrint("Network event stream error: $error");
-        },
-        cancelOnError: false,
-      );
-
-  /// Bytes transferred today / this week / this month across all transports.
-  /// Throws a PlatformException with code PERMISSION_DENIED when usage-stats
-  /// access has not been granted. The native side has always implemented these;
-  /// the Dart wrappers were missing.
-  Future<int> getDailyDataUsage() async =>
-      await _methodChannel.invokeMethod("getDailyDataUsage");
-
-  Future<int> getWeeklyDataUsage() async =>
-      await _methodChannel.invokeMethod("getWeeklyDataUsage");
-
-  Future<int> getMonthlyDataUsage() async =>
-      await _methodChannel.invokeMethod("getMonthlyDataUsage");
-
-  Future<bool> checkUsageStatsPermission() async =>
-      await _methodChannel.invokeMethod("checkUsageStatsPermission");
-
-  Future<void> requestUsageStatsPermission() async =>
-      await _methodChannel.invokeMethod("requestUsageStatsPermission");
-
   Future<void> openWifiSettings() async =>
       await _methodChannel.invokeMethod("openWifiSettings");
 
@@ -134,22 +99,11 @@ class FLauncherChannel {
 
   Future<void> startAmbientMode() async => await _methodChannel.invokeMethod("startAmbientMode");
 
-  /// Subscribes to package add/remove/change events.
-  ///
-  /// Returns the subscription so the caller can cancel it. Errors are reported
-  /// rather than escaping the stream: an unhandled error on a platform stream
-  /// propagates to the zone and can take the launcher down.
-  StreamSubscription addAppsChangedListener(void Function(Map<String, dynamic>) listener) =>
-      _appsEventChannel.receiveBroadcastStream().listen(
-        (event) {
-          Map<dynamic, dynamic> eventMap = event;
-          listener(eventMap.cast<String, dynamic>());
-        },
-        onError: (Object error) {
-          debugPrint("Apps event stream error: $error");
-        },
-        cancelOnError: false,
-      );
+  void addAppsChangedListener(void Function(Map<String, dynamic>) listener) =>
+      _appsEventChannel.receiveBroadcastStream().listen((event) {
+        Map<dynamic, dynamic> eventMap = event;
+        listener(eventMap.cast<String, dynamic>());
+      });
 
   Future<List<Map<dynamic, dynamic>>> getTvInputs() async {
     try {
@@ -191,14 +145,8 @@ class FLauncherChannel {
   }
 
   StreamSubscription addNotificationsChangedListener(void Function(List<Map<dynamic, dynamic>>) listener) =>
-      _notificationsEventChannel.receiveBroadcastStream().listen(
-        (event) {
-          final List<dynamic> eventList = event;
-          listener(eventList.cast<Map<dynamic, dynamic>>());
-        },
-        onError: (Object error) {
-          debugPrint("Notifications event stream error: $error");
-        },
-        cancelOnError: false,
-      );
+      _notificationsEventChannel.receiveBroadcastStream().listen((event) {
+        final List<dynamic> eventList = event;
+        listener(eventList.cast<Map<dynamic, dynamic>>());
+      });
 }

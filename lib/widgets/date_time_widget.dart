@@ -56,44 +56,21 @@ class _DateTimeWidgetState extends State<DateTimeWidget> {
     _timer = Timer.periodic(widget.updateInterval ?? _defaultInterval(), (_) => _refreshTime());
   }
 
-  /// Returns a 1-second interval if the format actually renders seconds,
-  /// otherwise 1 minute.
-  ///
-  /// Only unquoted `s`/`S` are pattern characters; an `s` inside a literal (as
-  /// in `'days'`) does not display seconds and must not make the whole app bar
-  /// rebuild every second.
+  /// Returns 1-second interval if format contains seconds, otherwise 1-minute.
   Duration _defaultInterval() {
     final fmt = widget._dateTimeFormatString;
-    var inLiteral = false;
-    for (var i = 0; i < fmt.length; i++) {
-      final char = fmt[i];
-      if (char == "'") {
-        inLiteral = !inLiteral;
-        continue;
-      }
-      if (!inLiteral && (char == 's' || char == 'S')) {
-        return const Duration(seconds: 1);
-      }
-    }
-    return const Duration(minutes: 1);
+    return (fmt.contains('s') || fmt.contains('S'))
+        ? const Duration(seconds: 1)
+        : const Duration(minutes: 1);
   }
 
   @override
   void didUpdateWidget(DateTimeWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    final formatChanged =
-        oldWidget._dateTimeFormatString != widget._dateTimeFormatString;
-    final intervalChanged = oldWidget.updateInterval != widget.updateInterval;
-
-    if (formatChanged) {
+    
+    // Update format if it changed
+    if (oldWidget._dateTimeFormatString != widget._dateTimeFormatString) {
       _dateFormat = DateFormat(widget._dateTimeFormatString, Platform.localeName);
-    }
-
-    if (formatChanged || intervalChanged) {
-      _timer.cancel();
-      _timer = Timer.periodic(
-          widget.updateInterval ?? _defaultInterval(), (_) => _refreshTime());
       setState(() {
         _now = DateTime.now();
       });

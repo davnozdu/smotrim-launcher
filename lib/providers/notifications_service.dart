@@ -12,15 +12,7 @@ class NotificationsService extends ChangeNotifier {
   bool _systemPopupEnabled = false;
   bool _initialized = false;
   StreamSubscription? _subscription;
-  // One generation counter per concurrent operation. They used to share a single
-  // counter, so calling e.g. checkPermission() while _init() was still running
-  // bumped it and made _init() abort half-way — leaving the service permanently
-  // uninitialised with no notification listener attached.
-  int _initCallCount = 0;
-  int _permissionCallCount = 0;
-  int _overlayCallCount = 0;
-  int _refreshCallCount = 0;
-  bool _disposed = false;
+  int _callCount = 0;
   SharedPreferences? _prefs;
 
   NotificationsService(this._channel) {
@@ -38,38 +30,31 @@ class NotificationsService extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    final localCallCount = ++_initCallCount;
+    final localCallCount = ++_callCount;
+    _prefs = await SharedPreferences.getInstance();
+    if (localCallCount != _callCount) return;
 
-    try {
-      _prefs = await SharedPreferences.getInstance();
-      if (localCallCount != _initCallCount || _disposed) return;
+    _systemPopupEnabled = _prefs?.getBool('system_notifications_popup') ?? false;
 
-      _systemPopupEnabled = _prefs?.getBool('system_notifications_popup') ?? false;
+    final bool allowed = await _channel.checkNotificationListenerPermission();
+    if (localCallCount != _callCount) return;
 
-      final bool allowed = await _channel.checkNotificationListenerPermission();
-      if (localCallCount != _initCallCount || _disposed) return;
+    _hasPermission = allowed;
 
-      _hasPermission = allowed;
+    final bool overlayAllowed = await _channel.checkOverlayPermission();
+    if (localCallCount != _callCount) return;
 
-      final bool overlayAllowed = await _channel.checkOverlayPermission();
-      if (localCallCount != _initCallCount || _disposed) return;
+    _hasOverlayPermission = overlayAllowed;
 
-      _hasOverlayPermission = overlayAllowed;
+    if (_hasPermission) {
+      final List<Map<dynamic, dynamic>> list = await _channel.getActiveNotifications();
+      if (localCallCount != _callCount) return;
 
-      if (_hasPermission) {
-        final List<Map<dynamic, dynamic>> list = await _channel.getActiveNotifications();
-        if (localCallCount != _initCallCount || _disposed) return;
+      _updateNotificationCounts(list);
 
-        _updateNotificationCounts(list);
-
-        _subscription = _channel.addNotificationsChangedListener((eventList) {
-          _updateNotificationCounts(eventList);
-        });
-      }
-    } catch (e) {
-      // A failed permission probe must not leave the service stuck as
-      // uninitialised; it just means there are no badges to show.
-      debugPrint('NotificationsService init failed: $e');
+      _subscription = _channel.addNotificationsChangedListener((eventList) {
+        _updateNotificationCounts(eventList);
+      });
     }
 
     _initialized = true;
@@ -77,9 +62,9 @@ class NotificationsService extends ChangeNotifier {
   }
 
   Future<void> checkPermission() async {
-    final localCallCount = ++_permissionCallCount;
+    final localCallCount = ++_callCount;
     final bool allowed = await _channel.checkNotificationListenerPermission();
-    if (localCallCount != _permissionCallCount) return;
+    if (localCallCount != _callCount) return;
 
     if (_hasPermission != allowed) {
       _hasPermission = allowed;
@@ -90,9 +75,9 @@ class NotificationsService extends ChangeNotifier {
   Future<void> refreshNotifications() async {
     if (!_hasPermission) return;
 
-    final localCallCount = ++_refreshCallCount;
+    final localCallCount = ++_callCount;
     final List<Map<dynamic, dynamic>> list = await _channel.getActiveNotifications();
-    if (localCallCount != _refreshCallCount) return;
+    if (localCallCount != _callCount) return;
 
     _updateNotificationCounts(list);
   }
@@ -132,9 +117,9 @@ class NotificationsService extends ChangeNotifier {
   }
 
   Future<void> checkOverlayPermission() async {
-    final localCallCount = ++_overlayCallCount;
+    final localCallCount = ++_callCount;
     final bool allowed = await _channel.checkOverlayPermission();
-    if (localCallCount != _overlayCallCount) return;
+    if (localCallCount != _callCount) return;
 
     if (_hasOverlayPermission != allowed) {
       _hasOverlayPermission = allowed;
@@ -154,15 +139,7 @@ class NotificationsService extends ChangeNotifier {
 
   @override
   void dispose() {
-    _disposed = true;
     _subscription?.cancel();
     super.dispose();
-  }
-
-  // Platform events can arrive after disposal; notifying then throws.
-  @override
-  void notifyListeners() {
-    if (_disposed) return;
-    super.notifyListeners();
   }
 }
