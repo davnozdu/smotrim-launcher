@@ -29,6 +29,10 @@ class HotelModeService extends ChangeNotifier {
   static const _kKeep = "hotel_keep_on_reset"; // packages NOT wiped on checkout
   static const _kFails = "hotel_fails";
   static const _kLockoutUntil = "hotel_lockout_until";
+  // Which scheme _kPinHash was produced with; absent means the pre-stretching
+  // single-round hash.
+  static const _kPinAlgo = "hotel_pin_algo";
+  static const _algoPbkdf2 = "pbkdf2-sha256";
 
   // No compiled-in master/back-door code exists by design: the only way into
   // the admin panel is the owner-set 8-digit PIN. A forgotten PIN can only be

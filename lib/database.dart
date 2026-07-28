@@ -279,5 +279,7 @@ class FLauncherDatabase extends _$FLauncherDatabase
 DatabaseConnection connect() => DatabaseConnection.delayed(() async {
       final dbFolder = await getApplicationDocumentsDirectory();
       final file = File(path.join(dbFolder.path, 'db.sqlite'));
-      return NativeDatabase.createInBackground(file, logStatements: foundation.kDebugMode);
+      final executor = await NativeDatabase.createInBackground(file,
+          logStatements: foundation.kDebugMode);
+      return DatabaseConnection(executor);
     }());

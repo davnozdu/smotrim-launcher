@@ -107,6 +107,25 @@ class FLauncherChannel {
         cancelOnError: false,
       );
 
+  /// Bytes transferred today / this week / this month across all transports.
+  /// Throws a PlatformException with code PERMISSION_DENIED when usage-stats
+  /// access has not been granted. The native side has always implemented these;
+  /// the Dart wrappers were missing.
+  Future<int> getDailyDataUsage() async =>
+      await _methodChannel.invokeMethod("getDailyDataUsage");
+
+  Future<int> getWeeklyDataUsage() async =>
+      await _methodChannel.invokeMethod("getWeeklyDataUsage");
+
+  Future<int> getMonthlyDataUsage() async =>
+      await _methodChannel.invokeMethod("getMonthlyDataUsage");
+
+  Future<bool> checkUsageStatsPermission() async =>
+      await _methodChannel.invokeMethod("checkUsageStatsPermission");
+
+  Future<void> requestUsageStatsPermission() async =>
+      await _methodChannel.invokeMethod("requestUsageStatsPermission");
+
   Future<void> openWifiSettings() async =>
       await _methodChannel.invokeMethod("openWifiSettings");
 
