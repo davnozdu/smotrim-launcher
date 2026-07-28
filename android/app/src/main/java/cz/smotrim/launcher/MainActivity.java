@@ -42,15 +42,9 @@ import android.media.tv.TvContract;
 
 import androidx.annotation.NonNull;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.io.ByteArrayOutputStream;
 import android.app.usage.NetworkStats;
 import android.app.usage.NetworkStatsManager;
 import android.app.AppOpsManager;
-import android.os.RemoteException;
 
 import io.flutter.embedding.android.FlutterActivity;
 import io.flutter.embedding.engine.FlutterEngine;
@@ -64,6 +58,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
@@ -80,6 +75,42 @@ public class MainActivity extends FlutterActivity {
     private final String NETWORK_EVENT_CHANNEL = "cz.smotrim.launcher/event_network";
     private final String NOTIFICATIONS_EVENT_CHANNEL = "cz.smotrim.launcher/event_notifications";
 
+    // Queries against PackageManager (labels, icons, banners) hit the disk and
+    // encode bitmaps, which is far too slow for the Android main thread: doing it
+    // there stalls input dispatch and risks an ANR on a low-end TV box. Everything
+    // expensive runs here instead and the result is posted back to the main thread.
+    private ExecutorService channelExecutor;
+
+    private synchronized ExecutorService channelExecutor() {
+        if (channelExecutor == null || channelExecutor.isShutdown()) {
+            channelExecutor = Executors.newFixedThreadPool(4);
+        }
+        return channelExecutor;
+    }
+
+    /** Runs [work] off the main thread and completes [result] back on it. */
+    private <T> void runAsync(Callable<T> work, MethodChannel.Result result) {
+        channelExecutor().execute(() -> {
+            T value;
+            try {
+                value = work.call();
+            } catch (Exception e) {
+                runOnUiThread(() -> result.error("NATIVE_ERROR", e.getMessage(), null));
+                return;
+            }
+            runOnUiThread(() -> result.success(value));
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (channelExecutor != null) {
+            channelExecutor.shutdownNow();
+            channelExecutor = null;
+        }
+        super.onDestroy();
+    }
+
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
         super.configureFlutterEngine(flutterEngine);
@@ -88,9 +119,15 @@ public class MainActivity extends FlutterActivity {
 
         new MethodChannel(messenger, METHOD_CHANNEL).setMethodCallHandler((call, result) -> {
             switch (call.method) {
-                case "getApplications" -> result.success(getApplications());
-                case "getApplicationBanner" -> result.success(getApplicationBanner(call.arguments()));
-                case "getApplicationIcon" -> result.success(getApplicationIcon(call.arguments()));
+                case "getApplications" -> runAsync(this::getApplications, result);
+                case "getApplicationBanner" -> {
+                    String packageName = call.arguments();
+                    runAsync(() -> getApplicationBanner(packageName), result);
+                }
+                case "getApplicationIcon" -> {
+                    String packageName = call.arguments();
+                    runAsync(() -> getApplicationIcon(packageName), result);
+                }
                 case "launchActivityFromAction" -> result.success(launchActivityFromAction(call.arguments()));
                 case "launchApp" -> result.success(launchApp(call.arguments()));
                 case "openSettings" -> result.success(openSettings());
@@ -109,31 +146,12 @@ public class MainActivity extends FlutterActivity {
                 case "isDefaultLauncher" -> result.success(isDefaultLauncher());
                 case "checkForGetContentAvailability" -> result.success(checkForGetContentAvailability());
                 case "startAmbientMode" -> result.success(startAmbientMode());
-                case "getActiveNetworkInformation" -> result.success(getActiveNetworkInformation());
-                case "getDailyDataUsage" -> {
-                    long usage = getDailyDataUsage();
-                    if (usage == -1) {
-                        result.error("PERMISSION_DENIED", "Usage stats permission not granted", null);
-                    } else {
-                        result.success(usage);
-                    }
-                }
-                case "getWeeklyDataUsage" -> {
-                    long usage = getWeeklyDataUsage();
-                    if (usage == -1) {
-                        result.error("PERMISSION_DENIED", "Usage stats permission not granted", null);
-                    } else {
-                        result.success(usage);
-                    }
-                }
-                case "getMonthlyDataUsage" -> {
-                    long usage = getMonthlyDataUsage();
-                    if (usage == -1) {
-                        result.error("PERMISSION_DENIED", "Usage stats permission not granted", null);
-                    } else {
-                        result.success(usage);
-                    }
-                }
+                case "getActiveNetworkInformation" -> runAsync(this::getActiveNetworkInformation, result);
+                // NetworkStatsManager queries are slow enough to drop frames; keep
+                // them off the main thread like the PackageManager calls above.
+                case "getDailyDataUsage" -> runDataUsageAsync(this::getDailyDataUsage, result);
+                case "getWeeklyDataUsage" -> runDataUsageAsync(this::getWeeklyDataUsage, result);
+                case "getMonthlyDataUsage" -> runDataUsageAsync(this::getMonthlyDataUsage, result);
                 case "checkUsageStatsPermission" -> result.success(checkUsageStatsPermission());
                 case "requestUsageStatsPermission" -> {
                     requestUsageStatsPermission();
@@ -157,7 +175,9 @@ public class MainActivity extends FlutterActivity {
                 case "getActiveNotifications" -> result.success(getActiveNotifications());
                 case "checkOverlayPermission" -> result.success(checkOverlayPermission());
                 case "requestOverlayPermission" -> result.success(requestOverlayPermission());
-                default -> throw new IllegalArgumentException();
+                // Throwing here surfaced as an opaque channel error; notImplemented()
+                // is what the Dart side can actually reason about.
+                default -> result.notImplemented();
             }
         });
 
@@ -199,7 +219,17 @@ public class MainActivity extends FlutterActivity {
     }
 
     private List<Map<String, Serializable>> getApplications() {
+        // A dedicated pool: this method already runs on channelExecutor and blocks
+        // waiting for its own tasks, so reusing that pool could deadlock it.
         ExecutorService executor = Executors.newFixedThreadPool(4);
+        try {
+            return getApplications(executor);
+        } finally {
+            executor.shutdown();
+        }
+    }
+
+    private List<Map<String, Serializable>> getApplications(ExecutorService executor) {
         CompletionService<Pair<Boolean, List<ResolveInfo>>> queryIntentActivitiesCompletionService = new ExecutorCompletionService<>(
                 executor);
         queryIntentActivitiesCompletionService.submit(() -> Pair.create(false, queryIntentActivities(false)));
@@ -223,37 +253,41 @@ public class MainActivity extends FlutterActivity {
             }
         }
 
+        // A failed query leaves its list null; without this the code below used to
+        // throw an NPE, which killed the channel call and left the launcher stuck
+        // on its loading spinner forever.
+        if (tvActivitiesInfo == null) {
+            tvActivitiesInfo = new ArrayList<>();
+        }
+        if (nonTvActivitiesInfo == null) {
+            nonTvActivitiesInfo = new ArrayList<>();
+        }
+
         CompletionService<Map<String, Serializable>> completionService = new ExecutorCompletionService<>(executor);
 
         List<Map<String, Serializable>> applications = new ArrayList<>(
                 tvActivitiesInfo.size() + nonTvActivitiesInfo.size());
 
-        boolean settingsPresent = false;
+        // Package names of the TV activities, so the sideloaded pass can skip
+        // duplicates with a hash lookup instead of a nested scan.
+        java.util.Set<String> tvPackageNames = new java.util.HashSet<>();
+        for (ResolveInfo tvActivityInfo : tvActivitiesInfo) {
+            tvPackageNames.add(tvActivityInfo.activityInfo.packageName);
+        }
+
+        boolean settingsPresent = tvPackageNames.contains("com.android.tv.settings");
         int appCount = 0;
         for (ResolveInfo tvActivityInfo : tvActivitiesInfo) {
-            if (!settingsPresent) {
-                settingsPresent = tvActivityInfo.activityInfo.packageName.equals("com.android.tv.settings");
-            }
-
             completionService.submit(() -> buildAppMap(tvActivityInfo.activityInfo, false, null));
             appCount += 1;
         }
 
         for (ResolveInfo nonTvActivityInfo : nonTvActivitiesInfo) {
-            boolean nonDuplicate = true;
-
             if (!settingsPresent) {
                 settingsPresent = nonTvActivityInfo.activityInfo.packageName.equals("com.android.settings");
             }
 
-            for (ResolveInfo tvActivityInfo : tvActivitiesInfo) {
-                if (tvActivityInfo.activityInfo.packageName.equals(nonTvActivityInfo.activityInfo.packageName)) {
-                    nonDuplicate = false;
-                    break;
-                }
-            }
-
-            if (nonDuplicate) {
+            if (!tvPackageNames.contains(nonTvActivityInfo.activityInfo.packageName)) {
                 appCount += 1;
                 completionService.submit(() -> buildAppMap(nonTvActivityInfo.activityInfo, true, null));
             }
@@ -268,8 +302,6 @@ public class MainActivity extends FlutterActivity {
                 appCount -= 1;
             }
         }
-
-        executor.shutdown();
 
         if (!settingsPresent) {
             PackageManager packageManager = getPackageManager();
@@ -304,6 +336,11 @@ public class MainActivity extends FlutterActivity {
         return map;
     }
 
+    // The launcher never draws these larger than a card on a 1080p TV, so there is
+    // no point shipping (or encoding) anything bigger across the channel.
+    private static final int MAX_BANNER_WIDTH = 512;
+    private static final int MAX_ICON_WIDTH = 192;
+
     private byte[] getApplicationBanner(String packageName) {
         byte[] imageBytes = new byte[0];
 
@@ -313,7 +350,7 @@ public class MainActivity extends FlutterActivity {
             Drawable drawable = info.loadBanner(packageManager);
 
             if (drawable != null) {
-                imageBytes = drawableToByteArray(drawable);
+                imageBytes = drawableToByteArray(drawable, MAX_BANNER_WIDTH);
             }
         } catch (PackageManager.NameNotFoundException ignored) {
         }
@@ -330,7 +367,7 @@ public class MainActivity extends FlutterActivity {
             Drawable drawable = info.loadIcon(packageManager);
 
             if (drawable != null) {
-                imageBytes = drawableToByteArray(drawable);
+                imageBytes = drawableToByteArray(drawable, MAX_ICON_WIDTH);
             }
         } catch (PackageManager.NameNotFoundException ignored) {
         }
@@ -736,27 +773,78 @@ public class MainActivity extends FlutterActivity {
         return success;
     }
 
-    private byte[] drawableToByteArray(Drawable drawable) {
+    /**
+     * Encodes [drawable] for the Dart side, downscaled to at most [maxWidth].
+     *
+     * This used to PNG-encode the drawable at its full intrinsic size, which was
+     * the single most expensive thing the launcher did at startup — lossless PNG
+     * of a full-resolution banner costs tens of milliseconds each, multiplied by
+     * every installed app. Scaling first and encoding WEBP is an order of
+     * magnitude cheaper and produces far fewer bytes to ship over the channel,
+     * with no visible difference on a TV card.
+     */
+    private byte[] drawableToByteArray(Drawable drawable, int maxWidth) {
         if (drawable.getIntrinsicWidth() <= 0 || drawable.getIntrinsicHeight() <= 0) {
             return new byte[0];
         }
 
         Bitmap bitmap;
-        if (drawable instanceof BitmapDrawable bitmapDrawable) {
+        // A BitmapDrawable's bitmap is owned by the PackageManager's resources and
+        // must never be recycled here; anything we render ourselves is ours to free.
+        boolean ownsBitmap;
+        if (drawable instanceof BitmapDrawable bitmapDrawable && bitmapDrawable.getBitmap() != null) {
             bitmap = bitmapDrawable.getBitmap();
+            ownsBitmap = false;
         } else {
-            bitmap = drawableToBitmap(drawable);
+            // Rasterise straight at the target size, so a vector or adaptive icon
+            // never allocates a full-size bitmap just to be scaled down after.
+            bitmap = drawableToBitmap(drawable, maxWidth);
+            ownsBitmap = true;
         }
-        ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-        return stream.toByteArray();
+
+        if (bitmap.getWidth() > maxWidth) {
+            int targetHeight = Math.max(1,
+                    Math.round(bitmap.getHeight() * (maxWidth / (float) bitmap.getWidth())));
+            Bitmap scaled = Bitmap.createScaledBitmap(bitmap, maxWidth, targetHeight, true);
+            if (scaled != bitmap) {
+                if (ownsBitmap) {
+                    bitmap.recycle();
+                }
+                bitmap = scaled;
+                ownsBitmap = true;
+            }
+        }
+
+        try {
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            bitmap.compress(webpFormat(), 92, stream);
+            return stream.toByteArray();
+        } finally {
+            if (ownsBitmap) {
+                bitmap.recycle();
+            }
+        }
     }
 
-    Bitmap drawableToBitmap(Drawable drawable) {
-        Bitmap bitmap = Bitmap.createBitmap(
-                drawable.getIntrinsicWidth(),
-                drawable.getIntrinsicHeight(),
-                Bitmap.Config.ARGB_8888);
+    @SuppressWarnings("deprecation")
+    private static Bitmap.CompressFormat webpFormat() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return Bitmap.CompressFormat.WEBP_LOSSY;
+        }
+        // WEBP is deprecated from API 30 on but is the only variant before it.
+        return Bitmap.CompressFormat.WEBP;
+    }
+
+    Bitmap drawableToBitmap(Drawable drawable, int maxWidth) {
+        int width = drawable.getIntrinsicWidth();
+        int height = drawable.getIntrinsicHeight();
+
+        if (width > maxWidth) {
+            height = Math.max(1, Math.round(height * (maxWidth / (float) width)));
+            width = maxWidth;
+        }
+
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
 
         Canvas canvas = new Canvas(bitmap);
         drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
@@ -796,6 +884,27 @@ public class MainActivity extends FlutterActivity {
             e.printStackTrace();
         }
         return -1;
+    }
+
+    /** Same as [runAsync], but maps the -1 "no permission" sentinel to a channel error. */
+    private void runDataUsageAsync(Callable<Long> work, MethodChannel.Result result) {
+        channelExecutor().execute(() -> {
+            long usage;
+            try {
+                usage = work.call();
+            } catch (Exception e) {
+                runOnUiThread(() -> result.error("NATIVE_ERROR", e.getMessage(), null));
+                return;
+            }
+            long value = usage;
+            runOnUiThread(() -> {
+                if (value == -1) {
+                    result.error("PERMISSION_DENIED", "Usage stats permission not granted", null);
+                } else {
+                    result.success(value);
+                }
+            });
+        });
     }
 
     private long getDailyDataUsage() {

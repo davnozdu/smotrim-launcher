@@ -14,8 +14,11 @@ import 'package:flutter/material.dart';
 import 'package:flauncher/flauncher_channel.dart';
 
 /// Small, non-interactive status icon next to the settings gear that shows at a
-/// glance whether the network is available. Polls a cheap native call every few
-/// seconds; no permissions and no traffic statistics.
+/// glance whether the network is available.
+///
+/// Reads the state once at startup and then follows the platform's network
+/// callbacks. It used to poll every 15 seconds instead, which woke the launcher
+/// up 5760 times a day to learn nothing.
 class NetworkStatusIcon extends StatefulWidget {
   const NetworkStatusIcon({super.key});
 
@@ -27,7 +30,7 @@ class _NetworkStatusIconState extends State<NetworkStatusIcon> {
   static const int _networkTypeEthernet = 2; // NetworkUtils.NETWORK_TYPE_ETHERNET
 
   final FLauncherChannel _channel = FLauncherChannel();
-  Timer? _timer;
+  StreamSubscription? _subscription;
   bool _available = false;
   bool _ethernet = false;
 
@@ -35,28 +38,31 @@ class _NetworkStatusIconState extends State<NetworkStatusIcon> {
   void initState() {
     super.initState();
     _refresh();
-    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _refresh());
+    _subscription = _channel.addNetworkChangedListener(_apply);
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _subscription?.cancel();
     super.dispose();
   }
 
   Future<void> _refresh() async {
     try {
-      final info = await _channel.getActiveNetworkInformation();
-      final available = (info["networkAccess"] as bool?) ?? false;
-      final ethernet = (info["networkType"] as int?) == _networkTypeEthernet;
-      if (mounted && (available != _available || ethernet != _ethernet)) {
-        setState(() {
-          _available = available;
-          _ethernet = ethernet;
-        });
-      }
+      _apply(await _channel.getActiveNetworkInformation());
     } catch (_) {
       if (mounted && _available) setState(() => _available = false);
+    }
+  }
+
+  void _apply(Map<String, dynamic> info) {
+    final available = (info["networkAccess"] as bool?) ?? false;
+    final ethernet = (info["networkType"] as int?) == _networkTypeEthernet;
+    if (mounted && (available != _available || ethernet != _ethernet)) {
+      setState(() {
+        _available = available;
+        _ethernet = ethernet;
+      });
     }
   }
 

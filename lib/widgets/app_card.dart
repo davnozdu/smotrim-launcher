@@ -102,39 +102,44 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
     _seenBannerVersion = _appsService!.bannerVersion(widget.application.packageName);
 
     // Check if we need to restore focus/reorder mode after a move
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-       final appsService = Provider.of<AppsService>(context, listen: false);
-       if (appsService.pendingReorderFocusPackage == widget.application.packageName &&
-           appsService.pendingReorderFocusCategoryId == widget.category.id) {
-          appsService.clearPendingReorderFocusPackage();
-          _focusNode.requestFocus();
-          
-          setState(() {
-            _moving = true;
-          });
-       }
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _claimPendingReorderFocus());
   }
 
   @override
   void didUpdateWidget(AppCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
-    // Check for pending focus on update as well
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-       final appsService = Provider.of<AppsService>(context, listen: false);
-       if (appsService.pendingReorderFocusPackage == widget.application.packageName &&
-           appsService.pendingReorderFocusCategoryId == widget.category.id) {
-          appsService.clearPendingReorderFocusPackage();
-          _focusNode.requestFocus();
-          
-          if (!_moving) {
-            setState(() {
-              _moving = true;
-            });
-          }
-       }
-    });
+
+    // Only worth a post-frame callback when there actually is a pending claim
+    // for this card. Registering one on every rebuild of every card allocated a
+    // callback per card per frame, each doing a provider lookup for nothing.
+    final appsService = _appsService;
+    if (appsService == null) return;
+    if (appsService.pendingReorderFocusPackage != widget.application.packageName) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _claimPendingReorderFocus());
+  }
+
+  /// Takes back focus (and reorder mode) after this card was moved.
+  void _claimPendingReorderFocus() {
+    // The callback runs a frame later, by which time the card may have been
+    // scrolled out and disposed — touching its context then throws.
+    if (!mounted) return;
+
+    final appsService = _appsService;
+    if (appsService == null) return;
+    if (appsService.pendingReorderFocusPackage != widget.application.packageName ||
+        appsService.pendingReorderFocusCategoryId != widget.category.id) {
+      return;
+    }
+
+    appsService.clearPendingReorderFocusPackage();
+    _focusNode.requestFocus();
+
+    if (!_moving) {
+      setState(() {
+        _moving = true;
+      });
+    }
   }
 
   @override
@@ -284,6 +289,12 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                                 onTap: () => _onPressed(context, LogicalKeyboardKey.enter),
                                 onLongPress: () => _onLongPress(context, LogicalKeyboardKey.enter),
                                 onFocusChange: (focused) {
+                                  // Only the card *gaining* focus should scroll
+                                  // itself into view. Doing it on focus loss too
+                                  // meant every d-pad press kicked off two
+                                  // competing scroll animations, which is what
+                                  // made navigation feel jumpy.
+                                  if (!focused) return;
                                   Scrollable.ensureVisible(
                                     context,
                                     // This specific alignment value is not only
@@ -312,15 +323,15 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                                 selector: (_, settingsService) => (settingsService.appHighlightAnimationEnabled, settingsService.accentColorHex),
                                 builder: (context, settings, _) {
                                   final (animationEnabled, accentColorHex) = settings;
-                                  final accentColor = Color(int.parse('FF$accentColorHex', radix: 16));
+                                  final accentColor = _parseAccentColor(accentColorHex);
 
                                   if (shouldHighlight && !hideHighlightOutlineOnHomescreen) {
                                     if (themes == 'premium') {
-                                      _animation.stop();
+                                      _setHighlightAnimating(false);
                                       return const SizedBox();
                                     }
                                     if (themes == 'classic') {
-                                      _animation.stop();
+                                      _setHighlightAnimating(false);
                                       return IgnorePointer(
                                         child: Stack(
                                           fit: StackFit.expand,
@@ -339,7 +350,7 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                                       );
                                     }
                                     if (animationEnabled) {
-                                      _animation.repeat(reverse: true);
+                                      _setHighlightAnimating(true);
                                       return AnimatedBuilder(
                                         animation: CurvedAnimation(parent: _animation, curve: Curves.easeInOut),
                                         builder: (context, child) {
@@ -378,7 +389,7 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                                         },
                                       );
                                     } else {
-                                      _animation.stop();
+                                      _setHighlightAnimating(false);
                                       return IgnorePointer(
                                         child: Stack(
                                           fit: StackFit.expand,
@@ -410,7 +421,7 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                                     }
                                   }
 
-                                  _animation.stop();
+                                  _setHighlightAnimating(false);
                                   return const SizedBox();
                                 },
                               ),
@@ -539,12 +550,30 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
 
   void _focusHighlightModeChanged(FocusHighlightMode mode)
   {
+    if (!mounted) return;
     setState(() { });
+  }
+
+  /// Starts/stops the focus pulse without restarting an already-running one.
+  void _setHighlightAnimating(bool animating) {
+    if (animating) {
+      if (!_animation.isAnimating) {
+        _animation.repeat(reverse: true);
+      }
+    } else if (_animation.isAnimating) {
+      _animation.stop();
+    }
   }
 
   bool _shouldHighlight(BuildContext context)
   {
     return FocusManager.instance.highlightMode == FocusHighlightMode.traditional && Focus.of(context).hasFocus;
+  }
+
+  static Color _parseAccentColor(String hex) {
+    final value = int.tryParse(hex, radix: 16);
+    if (value == null) return const Color(0xFF7C4DFF); // Default accent.
+    return Color(0xFF000000 | value);
   }
 
   Matrix4 _scaleTransform(BuildContext context, String theme, double maxWidth) {
