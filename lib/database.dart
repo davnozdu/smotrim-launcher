@@ -270,16 +270,17 @@ class FLauncherDatabase extends _$FLauncherDatabase
   }
 }
 
-/// Opens the launcher database on a background isolate.
+/// Opens the launcher database.
 ///
-/// A plain [NativeDatabase] executes every statement on the isolate that calls
-/// it — the UI isolate — so each query blocked frame production. Running the
-/// executor off-isolate keeps reads and writes away from the render loop; the
-/// migration callbacks above still run here and talk to it over a port.
+/// Deliberately a plain [NativeDatabase] on the calling isolate rather than
+/// NativeDatabase.createInBackground(). Moving the executor to its own isolate
+/// does keep queries off the render loop, but it is a second thing that has to
+/// hand back control before the home screen can render anything — and the
+/// launcher has already shipped one release where a startup dependency stopped
+/// answering and left users staring at a spinner. The queries here are small;
+/// the isolate is not worth that exposure.
 DatabaseConnection connect() => DatabaseConnection.delayed(() async {
       final dbFolder = await getApplicationDocumentsDirectory();
       final file = File(path.join(dbFolder.path, 'db.sqlite'));
-      final executor = await NativeDatabase.createInBackground(file,
-          logStatements: foundation.kDebugMode);
-      return DatabaseConnection(executor);
+      return DatabaseConnection(NativeDatabase(file, logStatements: foundation.kDebugMode));
     }());

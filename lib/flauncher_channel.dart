@@ -29,25 +29,51 @@ class FLauncherChannel {
   // cost performance -- never a call that never comes back.
   static const _heavyChannel = MethodChannel('cz.smotrim.launcher/method_bg');
 
-  /// Invokes [method] on the background channel, falling back to the main one.
+  // How long to give the background channel before giving up on it. A call that
+  // hangs is the failure mode that actually happened in v1.4.0, and a bare
+  // try/catch cannot see it: a Future that never completes never throws, so the
+  // fallback below was unreachable and the caller waited forever.
+  static const Duration _heavyTimeout = Duration(seconds: 6);
+
+  // Set once the background channel has let us down. Every later call goes
+  // straight to the main channel, so a broken background path costs one short
+  // delay for the whole session instead of one per call.
+  static bool _heavyChannelUsable = true;
+
+  /// Invokes [method] on the background channel, falling back to the main one
+  /// on error *or* on timeout.
   static Future<T> _heavy<T>(String method, [dynamic arguments]) async {
-    try {
-      return await _heavyChannel.invokeMethod<T>(method, arguments) as T;
-    } catch (_) {
-      return await _methodChannel.invokeMethod<T>(method, arguments) as T;
+    if (_heavyChannelUsable) {
+      try {
+        return await _heavyChannel
+            .invokeMethod<T>(method, arguments)
+            .timeout(_heavyTimeout) as T;
+      } catch (e) {
+        debugPrint("Background channel unusable ($method: $e); "
+            "falling back to the main channel for the rest of this session.");
+        _heavyChannelUsable = false;
+      }
     }
+    return await _methodChannel.invokeMethod<T>(method, arguments) as T;
   }
   static const _appsEventChannel = EventChannel('cz.smotrim.launcher/event_apps');
   static const _networkEventChannel = EventChannel('cz.smotrim.launcher/event_network');
   static const _notificationsEventChannel = EventChannel('cz.smotrim.launcher/event_notifications');
 
   Future<List<Map<dynamic, dynamic>>> getApplications() async {
-    try {
-      final applications =
-          await _heavyChannel.invokeListMethod<Map<dynamic, dynamic>>("getApplications");
-      if (applications != null) return applications;
-    } catch (_) {
-      // Fall through to the main channel below.
+    // This one gates the whole launcher: until it answers, the home screen has
+    // nothing to show but a spinner. It must never be able to wait forever.
+    if (_heavyChannelUsable) {
+      try {
+        final applications = await _heavyChannel
+            .invokeListMethod<Map<dynamic, dynamic>>("getApplications")
+            .timeout(_heavyTimeout);
+        if (applications != null) return applications;
+      } catch (e) {
+        debugPrint("Background channel unusable (getApplications: $e); "
+            "falling back to the main channel for the rest of this session.");
+      }
+      _heavyChannelUsable = false;
     }
     List<Map<dynamic, dynamic>>? applications = await _methodChannel.invokeListMethod("getApplications");
     return applications!;

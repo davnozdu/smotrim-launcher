@@ -83,6 +83,12 @@ class AppsService extends ChangeNotifier {
   // cutting those off would throw away icons that were about to arrive.
   static const Duration _imageLoadTimeout = Duration(seconds: 45);
 
+  // Hard ceiling on how long the home screen may stay behind its loading
+  // spinner. Startup normally takes well under a second, so reaching this means
+  // something is wrong — and showing a partly-populated launcher is strictly
+  // better than showing one that never loads.
+  static const Duration _initTimeout = Duration(seconds: 20);
+
   bool _initialized = false;
   bool _disposed = false;
   StreamSubscription? _appsChangedSubscription;
@@ -178,18 +184,20 @@ class AppsService extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    // Anything that throws in here used to leave `_initialized` false forever,
-    // which the home screen renders as a loading spinner that never goes away.
-    // A partially-initialised launcher beats a permanently blank one.
+    // `_initialized` gates the entire home screen: while it is false the user
+    // sees nothing but a spinner. Two things used to be able to pin it there —
+    // an exception (no handler) and, worse, a dependency that simply never
+    // answered (no timeout, so nothing to catch). Both are covered here: come
+    // what may, the launcher gives up waiting and renders what it has.
     try {
-      await _refreshState(shouldNotifyListeners: false);
+      await _refreshState(shouldNotifyListeners: false).timeout(_initTimeout);
       if (_database.wasCreated) {
-        await _initDefaultCategories();
+        await _initDefaultCategories().timeout(_initTimeout);
       } else {
-        await _migrateFavoritesFirst();
+        await _migrateFavoritesFirst().timeout(_initTimeout);
       }
     } catch (e, stackTrace) {
-      debugPrint("AppsService init failed: $e");
+      debugPrint("AppsService init failed or timed out: $e");
       debugPrintStack(stackTrace: stackTrace);
     }
 
