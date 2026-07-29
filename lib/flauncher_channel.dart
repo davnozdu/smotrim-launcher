@@ -23,24 +23,41 @@ import 'package:flutter/services.dart';
 
 class FLauncherChannel {
   static const _methodChannel = MethodChannel('cz.smotrim.launcher/method');
+  // Served on a Flutter background task queue natively, so these calls do not
+  // block the Android main thread. Every one of them is also still available on
+  // _methodChannel, and _heavy() falls back to it, so a failure here can only
+  // cost performance -- never a call that never comes back.
+  static const _heavyChannel = MethodChannel('cz.smotrim.launcher/method_bg');
+
+  /// Invokes [method] on the background channel, falling back to the main one.
+  static Future<T> _heavy<T>(String method, [dynamic arguments]) async {
+    try {
+      return await _heavyChannel.invokeMethod<T>(method, arguments) as T;
+    } catch (_) {
+      return await _methodChannel.invokeMethod<T>(method, arguments) as T;
+    }
+  }
   static const _appsEventChannel = EventChannel('cz.smotrim.launcher/event_apps');
   static const _networkEventChannel = EventChannel('cz.smotrim.launcher/event_network');
   static const _notificationsEventChannel = EventChannel('cz.smotrim.launcher/event_notifications');
 
   Future<List<Map<dynamic, dynamic>>> getApplications() async {
+    try {
+      final applications =
+          await _heavyChannel.invokeListMethod<Map<dynamic, dynamic>>("getApplications");
+      if (applications != null) return applications;
+    } catch (_) {
+      // Fall through to the main channel below.
+    }
     List<Map<dynamic, dynamic>>? applications = await _methodChannel.invokeListMethod("getApplications");
     return applications!;
   }
 
-  Future<Uint8List> getApplicationBanner(String packageName) async {
-    Uint8List bytes = await _methodChannel.invokeMethod("getApplicationBanner", packageName);
-    return bytes;
-  }
+  Future<Uint8List> getApplicationBanner(String packageName) =>
+      _heavy<Uint8List>("getApplicationBanner", packageName);
 
-  Future<Uint8List> getApplicationIcon(String packageName) async {
-    Uint8List bytes = await _methodChannel.invokeMethod("getApplicationIcon", packageName);
-    return bytes;
-  }
+  Future<Uint8List> getApplicationIcon(String packageName) =>
+      _heavy<Uint8List>("getApplicationIcon", packageName);
 
   Future<void> launchActivityFromAction(String action) async => await _methodChannel.invokeMethod('launchActivityFromAction', action);
 
@@ -89,7 +106,7 @@ class FLauncherChannel {
 
   /// Active network info: { networkAccess, internetAccess, networkType, wirelessSignalLevel }.
   Future<Map<String, dynamic>> getActiveNetworkInformation() async {
-    final map = await _methodChannel.invokeMethod("getActiveNetworkInformation");
+    final map = await _heavy<dynamic>("getActiveNetworkInformation");
     return (map as Map).cast<String, dynamic>();
   }
 
@@ -111,14 +128,11 @@ class FLauncherChannel {
   /// Throws a PlatformException with code PERMISSION_DENIED when usage-stats
   /// access has not been granted. The native side has always implemented these;
   /// the Dart wrappers were missing.
-  Future<int> getDailyDataUsage() async =>
-      await _methodChannel.invokeMethod("getDailyDataUsage");
+  Future<int> getDailyDataUsage() => _heavy<int>("getDailyDataUsage");
 
-  Future<int> getWeeklyDataUsage() async =>
-      await _methodChannel.invokeMethod("getWeeklyDataUsage");
+  Future<int> getWeeklyDataUsage() => _heavy<int>("getWeeklyDataUsage");
 
-  Future<int> getMonthlyDataUsage() async =>
-      await _methodChannel.invokeMethod("getMonthlyDataUsage");
+  Future<int> getMonthlyDataUsage() => _heavy<int>("getMonthlyDataUsage");
 
   Future<bool> checkUsageStatsPermission() async =>
       await _methodChannel.invokeMethod("checkUsageStatsPermission");

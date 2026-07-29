@@ -51,6 +51,7 @@ import io.flutter.embedding.engine.FlutterEngine;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodChannel;
+import io.flutter.plugin.common.StandardMethodCodec;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
@@ -58,7 +59,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
@@ -75,51 +75,17 @@ public class MainActivity extends FlutterActivity {
     private final String NETWORK_EVENT_CHANNEL = "cz.smotrim.launcher/event_network";
     private final String NOTIFICATIONS_EVENT_CHANNEL = "cz.smotrim.launcher/event_notifications";
 
-    // Queries against PackageManager (labels, icons, banners) hit the disk and
-    // encode bitmaps, which is far too slow for the Android main thread: doing it
-    // there stalls input dispatch and risks an ANR on a low-end TV box. Everything
-    // expensive runs here instead and the result is posted back to the main thread.
-    private ExecutorService channelExecutor;
-
-    private synchronized ExecutorService channelExecutor() {
-        if (channelExecutor == null || channelExecutor.isShutdown()) {
-            channelExecutor = Executors.newFixedThreadPool(4);
-        }
-        return channelExecutor;
-    }
-
-    /**
-     * Runs [work] off the main thread and completes [result] back on it.
-     *
-     * Catches Throwable, not Exception: bitmap work can raise OutOfMemoryError,
-     * and a linkage error is possible whenever an API is version-guarded. Those
-     * are Errors, so catching Exception let the worker thread die silently with
-     * the result never completed — which the Dart side cannot distinguish from a
-     * call still in progress, leaving the caller's Future pending forever.
-     * Every path through here must complete the result exactly once.
-     */
-    private <T> void runAsync(Callable<T> work, MethodChannel.Result result) {
-        channelExecutor().execute(() -> {
-            T value;
-            try {
-                value = work.call();
-            } catch (Throwable t) {
-                t.printStackTrace();
-                runOnUiThread(() -> result.error("NATIVE_ERROR", String.valueOf(t), null));
-                return;
-            }
-            runOnUiThread(() -> result.success(value));
-        });
-    }
-
-    @Override
-    protected void onDestroy() {
-        if (channelExecutor != null) {
-            channelExecutor.shutdownNow();
-            channelExecutor = null;
-        }
-        super.onDestroy();
-    }
+    // Heavy calls (PackageManager queries, icon/banner encoding, NetworkStats)
+    // are served on a second channel bound to a Flutter background task queue.
+    //
+    // An earlier attempt hand-rolled this with an ExecutorService plus generic
+    // Callable lambdas, and it broke in release builds only: the app's own
+    // package has no keep rule and R8 runs in full mode, so the plumbing was
+    // optimised into something that never completed the result. Every call that
+    // went through it hung forever. Flutter's own task queue does the same job
+    // with no custom threading to get mangled -- the handler simply runs on a
+    // background thread and completes the result from there.
+    private static final String HEAVY_METHOD_CHANNEL = "cz.smotrim.launcher/method_bg";
 
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
@@ -129,15 +95,9 @@ public class MainActivity extends FlutterActivity {
 
         new MethodChannel(messenger, METHOD_CHANNEL).setMethodCallHandler((call, result) -> {
             switch (call.method) {
-                case "getApplications" -> runAsync(this::getApplications, result);
-                case "getApplicationBanner" -> {
-                    String packageName = call.arguments();
-                    runAsync(() -> getApplicationBanner(packageName), result);
-                }
-                case "getApplicationIcon" -> {
-                    String packageName = call.arguments();
-                    runAsync(() -> getApplicationIcon(packageName), result);
-                }
+                case "getApplications" -> result.success(getApplications());
+                case "getApplicationBanner" -> result.success(getApplicationBanner(call.arguments()));
+                case "getApplicationIcon" -> result.success(getApplicationIcon(call.arguments()));
                 case "launchActivityFromAction" -> result.success(launchActivityFromAction(call.arguments()));
                 case "launchApp" -> result.success(launchApp(call.arguments()));
                 case "openSettings" -> result.success(openSettings());
@@ -156,12 +116,10 @@ public class MainActivity extends FlutterActivity {
                 case "isDefaultLauncher" -> result.success(isDefaultLauncher());
                 case "checkForGetContentAvailability" -> result.success(checkForGetContentAvailability());
                 case "startAmbientMode" -> result.success(startAmbientMode());
-                case "getActiveNetworkInformation" -> runAsync(this::getActiveNetworkInformation, result);
-                // NetworkStatsManager queries are slow enough to drop frames; keep
-                // them off the main thread like the PackageManager calls above.
-                case "getDailyDataUsage" -> runDataUsageAsync(this::getDailyDataUsage, result);
-                case "getWeeklyDataUsage" -> runDataUsageAsync(this::getWeeklyDataUsage, result);
-                case "getMonthlyDataUsage" -> runDataUsageAsync(this::getMonthlyDataUsage, result);
+                case "getActiveNetworkInformation" -> result.success(getActiveNetworkInformation());
+                case "getDailyDataUsage" -> reportDataUsage(getDailyDataUsage(), result);
+                case "getWeeklyDataUsage" -> reportDataUsage(getWeeklyDataUsage(), result);
+                case "getMonthlyDataUsage" -> reportDataUsage(getMonthlyDataUsage(), result);
                 case "checkUsageStatsPermission" -> result.success(checkUsageStatsPermission());
                 case "requestUsageStatsPermission" -> {
                     requestUsageStatsPermission();
@@ -190,6 +148,33 @@ public class MainActivity extends FlutterActivity {
                 default -> result.notImplemented();
             }
         });
+
+        // Same heavy methods again, this time delivered on a background thread by
+        // Flutter itself. Dart prefers this channel and falls back to the main
+        // one above if anything here fails, so the worst case is the original
+        // on-the-platform-thread behaviour rather than a call that never returns.
+        new MethodChannel(messenger, HEAVY_METHOD_CHANNEL, StandardMethodCodec.INSTANCE,
+                messenger.makeBackgroundTaskQueue())
+                .setMethodCallHandler((call, result) -> {
+                    try {
+                        switch (call.method) {
+                            case "getApplications" -> result.success(getApplications());
+                            case "getApplicationBanner" -> result.success(getApplicationBanner(call.arguments()));
+                            case "getApplicationIcon" -> result.success(getApplicationIcon(call.arguments()));
+                            case "getActiveNetworkInformation" -> result.success(getActiveNetworkInformation());
+                            case "getDailyDataUsage" -> reportDataUsage(getDailyDataUsage(), result);
+                            case "getWeeklyDataUsage" -> reportDataUsage(getWeeklyDataUsage(), result);
+                            case "getMonthlyDataUsage" -> reportDataUsage(getMonthlyDataUsage(), result);
+                            default -> result.notImplemented();
+                        }
+                    } catch (Throwable t) {
+                        // Must always complete the result: a handler that returns
+                        // without answering leaves the Dart Future pending forever,
+                        // which the UI can only render as an endless spinner.
+                        t.printStackTrace();
+                        result.error("NATIVE_ERROR", String.valueOf(t), null);
+                    }
+                });
 
         new EventChannel(messenger, APPS_EVENT_CHANNEL).setStreamHandler(
                 new LauncherAppsEventStreamHandler(this));
@@ -229,8 +214,8 @@ public class MainActivity extends FlutterActivity {
     }
 
     private List<Map<String, Serializable>> getApplications() {
-        // A dedicated pool: this method already runs on channelExecutor and blocks
-        // waiting for its own tasks, so reusing that pool could deadlock it.
+        // Its own pool, shut down before returning: this method blocks waiting on
+        // the tasks it submits, so it must never share a pool with its caller.
         ExecutorService executor = Executors.newFixedThreadPool(4);
         try {
             return getApplications(executor);
@@ -902,26 +887,13 @@ public class MainActivity extends FlutterActivity {
         return -1;
     }
 
-    /** Same as [runAsync], but maps the -1 "no permission" sentinel to a channel error. */
-    private void runDataUsageAsync(Callable<Long> work, MethodChannel.Result result) {
-        channelExecutor().execute(() -> {
-            long usage;
-            try {
-                usage = work.call();
-            } catch (Throwable t) {
-                t.printStackTrace();
-                runOnUiThread(() -> result.error("NATIVE_ERROR", String.valueOf(t), null));
-                return;
-            }
-            long value = usage;
-            runOnUiThread(() -> {
-                if (value == -1) {
-                    result.error("PERMISSION_DENIED", "Usage stats permission not granted", null);
-                } else {
-                    result.success(value);
-                }
-            });
-        });
+    /** Maps the -1 "no permission" sentinel to a channel error. */
+    private static void reportDataUsage(long usage, MethodChannel.Result result) {
+        if (usage == -1) {
+            result.error("PERMISSION_DENIED", "Usage stats permission not granted", null);
+        } else {
+            result.success(usage);
+        }
     }
 
     private long getDailyDataUsage() {
