@@ -27,7 +27,6 @@ import 'package:flauncher/database.dart';
 import 'package:flauncher/flauncher_channel.dart';
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter/widgets.dart' hide Category;
-import 'package:pool/pool.dart';
 
 import '../models/app.dart';
 import '../models/category.dart';
@@ -75,9 +74,14 @@ class AppsService extends ChangeNotifier {
   static const int _iconCacheSize = 60;
   static const int _bannerCacheSize = 40;
 
-  // A platform call that never answers must not leave a card spinning forever.
-  // The card degrades to the icon, and then to the app's name, instead.
-  static const Duration _imageLoadTimeout = Duration(seconds: 10);
+  // A platform call that never answers must not leave a card spinning forever;
+  // the card degrades to the icon, and then to the app's name, instead.
+  //
+  // Generous on purpose. This exists to catch a call that will never come back,
+  // not to bound latency: the native side answers these on a serial queue, so a
+  // slow box with many apps can legitimately keep a later request waiting, and
+  // cutting those off would throw away icons that were about to arrive.
+  static const Duration _imageLoadTimeout = Duration(seconds: 45);
 
   bool _initialized = false;
   bool _disposed = false;
@@ -296,36 +300,16 @@ class AppsService extends ChangeNotifier {
 
     _initialized = true;
     notifyListeners();
-
-    // Pre-cache icons for visible apps
-    _preCacheIcons();
   }
 
-  Future<void> _preCacheIcons() async {
-    // Only cache apps that are not hidden. Capped at the cache size: warming
-    // more than the cache holds would just evict what was warmed first, and
-    // every extra entry is native decode work competing with the first frame.
-    final visibleApps = _applications.values
-        .where((app) => !app.hidden)
-        .take(_bannerCacheSize)
-        .toList();
-    final pool = Pool(4);
-    try {
-      await Future.wait(visibleApps.map((app) => pool.withResource(() async {
-            // Warm only what the card actually shows: the banner, or the icon
-            // only when there is no banner. Requests are de-duplicated against
-            // the cards' own loads, so this never doubles the work.
-            final banner = await getAppBanner(app.packageName);
-            if (banner.isEmpty) {
-              await getAppIcon(app.packageName);
-            }
-          })));
-    } catch (e) {
-      debugPrint("Icon pre-cache failed: $e");
-    } finally {
-      await pool.close();
-    }
-  }
+  // There is deliberately no startup icon pre-cache any more.
+  //
+  // It made sense when the home screen built every card up front. Now the
+  // screen is lazy and each card requests its own image, while the native side
+  // serves these calls on a *serial* background queue. Warming dozens of apps
+  // at launch therefore did not help anything: it put requests for apps that
+  // are not on screen ahead of the ones that are, so the visible icons were the
+  // last to arrive.
 
   AppsCompanion _buildAppCompanion(dynamic data) {
     String? version = data["version"];
