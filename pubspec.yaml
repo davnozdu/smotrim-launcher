@@ -1,7 +1,11 @@
 name: flauncher
 description: Flutter-based Android TV launcher.
 
-version: 2026.05.01+8103
+# The build number must stay ahead of the released versionCode, otherwise a
+# locally-built APK cannot be installed over a release for testing: Android
+# refuses the downgrade, and `adb install -d` only waives that for debuggable
+# builds. Tagged CI builds override this with 9000 + the run number.
+version: 2026.05.01+9200
 
 environment:
   sdk: ">=3.4.3"
