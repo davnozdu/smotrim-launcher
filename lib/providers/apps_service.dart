@@ -74,15 +74,6 @@ class AppsService extends ChangeNotifier {
   static const int _iconCacheSize = 60;
   static const int _bannerCacheSize = 40;
 
-  // A platform call that never answers must not leave a card spinning forever;
-  // the card degrades to the icon, and then to the app's name, instead.
-  //
-  // Generous on purpose. This exists to catch a call that will never come back,
-  // not to bound latency: the native side answers these on a serial queue, so a
-  // slow box with many apps can legitimately keep a later request waiting, and
-  // cutting those off would throw away icons that were about to arrive.
-  static const Duration _imageLoadTimeout = Duration(seconds: 45);
-
   // Hard ceiling on how long the home screen may stay behind its loading
   // spinner. Startup normally takes well under a second, so reaching this means
   // something is wrong — and showing a partly-populated launcher is strictly
@@ -97,12 +88,6 @@ class AppsService extends ChangeNotifier {
   Map<String, App> _applications = Map();
   final _LruCache<String, Uint8List> _iconCache = _LruCache(_iconCacheSize);
   final _LruCache<String, Uint8List> _bannerCache = _LruCache(_bannerCacheSize);
-  // In-flight platform requests, keyed by package name. Without these, the
-  // startup pre-cache and the card's own FutureBuilder each fire their own
-  // request for the same image before either completes, doubling the (costly)
-  // native decode work for every app on screen.
-  final Map<String, Future<Uint8List>> _iconRequests = {};
-  final Map<String, Future<Uint8List>> _bannerRequests = {};
   // Bumped when an app's custom banner changes, so only the affected card
   // reloads its image (instead of every card on every notifyListeners()).
   final Map<String, int> _bannerVersions = {};
@@ -515,18 +500,19 @@ class AppsService extends ChangeNotifier {
     return _categoriesByNameCache![targetName] ?? _fallbackCategoryCache;
   }
 
-  Future<Uint8List> getAppBanner(String packageName) {
-    final cached = _bannerCache[packageName];
-    if (cached != null) {
-      return SynchronousFuture(cached);
+  // Image loading is deliberately the plain, original implementation: check the
+  // cache, otherwise ask the platform. An earlier version wrapped this in an
+  // in-flight request map returning SynchronousFuture for cache hits, and on a
+  // real box the card Futures simply never completed -- the platform thread sat
+  // idle at zero work while every card span forever, so the request was never
+  // even reaching the channel. Whatever the exact interaction was, this layer is
+  // on the path to the very first thing the user sees and is not the place to be
+  // clever.
+  Future<Uint8List> getAppBanner(String packageName) async {
+    if (_bannerCache.containsKey(packageName)) {
+      return _bannerCache[packageName]!;
     }
-    // Join an identical request that is already in flight instead of issuing a
-    // second one.
-    return _bannerRequests[packageName] ??= _loadAppBanner(packageName)
-        .whenComplete(() => _bannerRequests.remove(packageName));
-  }
 
-  Future<Uint8List> _loadAppBanner(String packageName) async {
     try {
       final prefs = await _prefsAsync;
       final customBannerPath = prefs.getString('custom_banner_$packageName');
@@ -546,19 +532,10 @@ class AppsService extends ChangeNotifier {
       // Ignore other errors reading custom banner
     }
 
-    final Uint8List bytes;
-    try {
-      bytes = await _fLauncherChannel
-          .getApplicationBanner(packageName)
-          .timeout(_imageLoadTimeout);
-    } catch (_) {
-      // A failed platform call must not surface as an unhandled error; the card
-      // falls back to the icon (and then to the app name) on empty bytes.
-      return Uint8List(0);
+    final bytes = await _fLauncherChannel.getApplicationBanner(packageName);
+    if (bytes.isNotEmpty) {
+      _bannerCache[packageName] = bytes;
     }
-    // "No banner" is cached too: otherwise every rebuild of a banner-less card
-    // went back across the platform channel for the same empty answer.
-    _bannerCache[packageName] = bytes;
     return bytes;
   }
 
@@ -591,25 +568,14 @@ class AppsService extends ChangeNotifier {
     return prefs.containsKey('custom_banner_$packageName');
   }
 
-  Future<Uint8List> getAppIcon(String packageName) {
-    final cached = _iconCache[packageName];
-    if (cached != null) {
-      return SynchronousFuture(cached);
+  Future<Uint8List> getAppIcon(String packageName) async {
+    if (_iconCache.containsKey(packageName)) {
+      return _iconCache[packageName]!;
     }
-    return _iconRequests[packageName] ??= _loadAppIcon(packageName)
-        .whenComplete(() => _iconRequests.remove(packageName));
-  }
-
-  Future<Uint8List> _loadAppIcon(String packageName) async {
-    final Uint8List bytes;
-    try {
-      bytes = await _fLauncherChannel
-          .getApplicationIcon(packageName)
-          .timeout(_imageLoadTimeout);
-    } catch (_) {
-      return Uint8List(0);
+    final bytes = await _fLauncherChannel.getApplicationIcon(packageName);
+    if (bytes.isNotEmpty) {
+      _iconCache[packageName] = bytes;
     }
-    _iconCache[packageName] = bytes;
     return bytes;
   }
 
