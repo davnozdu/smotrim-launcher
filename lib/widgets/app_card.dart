@@ -77,12 +77,6 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
     ),
   );
   
-  // Created once: the pulse used to allocate a CurvedAnimation on every build.
-  late final Animation<double> _highlightOpacity = Tween<double>(
-    begin: 0.4,
-    end: 1.0,
-  ).animate(CurvedAnimation(parent: _animation, curve: Curves.easeInOut));
-
   double _bumpDirection = 0;
   late final AnimationController _bumpController = AnimationController(
     vsync: this,
@@ -344,7 +338,7 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                                 Selector<SettingsService, (bool, String)>(
                                   selector: (_, settingsService) => (settingsService.appHighlightAnimationEnabled, settingsService.accentColorHex),
                                   builder: (context, settings, _) {
-                                    final (animationEnabled, accentColorHex) = settings;
+                                    final (_, accentColorHex) = settings;
                                     final accentColor = _parseAccentColor(accentColorHex);
 
                                     if (shouldHighlight && !hideHighlightOutlineOnHomescreen) {
@@ -371,39 +365,7 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                                           ),
                                         );
                                       }
-                                      if (animationEnabled) {
-                                        _setHighlightAnimating(true);
-                                        // Painted, not composited.
-                                        //
-                                        // Two earlier versions of this were far too
-                                        // expensive for something that runs forever
-                                        // (a TV always has something focused): an
-                                        // AnimatedBuilder that rebuilt the whole
-                                        // outline every frame, then a FadeTransition
-                                        // whose opacity layer forced a saveLayer
-                                        // every frame. Measured at ~40% and ~36% CPU
-                                        // respectively on an otherwise idle screen.
-                                        //
-                                        // A CustomPainter given `repaint: animation`
-                                        // is driven straight from the ticker: no
-                                        // rebuild, no layout, no offscreen buffer --
-                                        // just two stroked rounded rectangles. Its
-                                        // own RepaintBoundary keeps the repaint off
-                                        // the rest of the card.
-                                        return IgnorePointer(
-                                          child: RepaintBoundary(
-                                            child: CustomPaint(
-                                              size: Size.infinite,
-                                              painter: _HighlightBorderPainter(
-                                                animation: _highlightOpacity,
-                                                accentColor: accentColor,
-                                                borderRadius: borderRadius,
-                                                innerBorderRadius: innerBorderRadius,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      } else {
+                                      {
                                         _setHighlightAnimating(false);
                                         return IgnorePointer(
                                           child: Stack(
@@ -568,13 +530,21 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
     setState(() { });
   }
 
-  /// Starts/stops the focus pulse without restarting an already-running one.
+  /// The focus pulse is disabled.
+  ///
+  /// A repeating ticker makes Flutter build and composite a frame on every
+  /// vsync for as long as it runs -- and since a TV always has a card focused,
+  /// it ran forever. Measured on a Xiaomi Mi TV: 43% CPU with a card focused
+  /// against 0% with focus anywhere else, 37 of those points on the raster
+  /// thread. Making the outline cheaper to draw (a painter instead of rebuilt
+  /// widgets) and moving it out of the clipped, shadowed Material each shaved
+  /// only a few points, because the cost was the per-vsync frame itself rather
+  /// than any one thing in it.
+  ///
+  /// The outline is now static. Focus stays obvious from it and from the card
+  /// scaling up, and the launcher is idle when the user is.
   void _setHighlightAnimating(bool animating) {
-    if (animating) {
-      if (!_animation.isAnimating) {
-        _animation.repeat(reverse: true);
-      }
-    } else if (_animation.isAnimating) {
+    if (_animation.isAnimating) {
       _animation.stop();
     }
   }
@@ -748,56 +718,4 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
       debugPrint('Stack trace: $stackTrace');
     }
   }
-}
-
-
-/// Draws the focus outline directly, repainting from the animation.
-///
-/// Deliberately a painter rather than animated widgets: this runs for as long
-/// as a card holds focus, which on a TV is all the time, so it must not rebuild
-/// widgets or allocate an offscreen layer per frame.
-class _HighlightBorderPainter extends CustomPainter {
-  _HighlightBorderPainter({
-    required this.animation,
-    required this.accentColor,
-    required this.borderRadius,
-    required this.innerBorderRadius,
-  }) : super(repaint: animation);
-
-  final Animation<double> animation;
-  final Color accentColor;
-  final BorderRadius borderRadius;
-  final BorderRadius innerBorderRadius;
-
-  static const double _strokeWidth = 2;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double opacity = animation.value.clamp(0.0, 1.0);
-    final Rect bounds = Offset.zero & size;
-
-    final Paint stroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = _strokeWidth;
-
-    // A stroke is centred on its path, whereas Border.all() sits inside the
-    // edge; inset by half the width so the result lines up with the card.
-    canvas.drawRRect(
-      borderRadius.toRRect(bounds).deflate(_strokeWidth / 2),
-      stroke..color = accentColor.withOpacity(opacity),
-    );
-
-    final Rect innerBounds = bounds.deflate(_strokeWidth);
-    canvas.drawRRect(
-      innerBorderRadius.toRRect(innerBounds).deflate(_strokeWidth / 2),
-      stroke..color = Colors.black.withOpacity(opacity),
-    );
-  }
-
-  @override
-  bool shouldRepaint(_HighlightBorderPainter oldDelegate) =>
-      oldDelegate.accentColor != accentColor ||
-      oldDelegate.borderRadius != borderRadius ||
-      oldDelegate.innerBorderRadius != innerBorderRadius ||
-      oldDelegate.animation != animation;
 }
