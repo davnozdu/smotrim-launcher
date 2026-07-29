@@ -49,6 +49,13 @@ class _AppStorePageState extends State<AppStorePage> {
   bool _downloading = false;
   double _progress = 0;
 
+  // connectionTimeout only covers the handshake. A connection that is
+  // established and then goes quiet would otherwise hold the download loop
+  // open forever, and because _downloading gates re-entry that also meant no
+  // further app could be installed until the launcher was restarted.
+  static const Duration _requestTimeout = Duration(seconds: 30);
+  static const Duration _stallTimeout = Duration(minutes: 2);
+
   Future<void> _downloadAndInstall(String url, String? suggestedName) async {
     if (_downloading) return;
     setState(() {
@@ -59,7 +66,7 @@ class _AppStorePageState extends State<AppStorePage> {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
     try {
       final request = await client.getUrl(Uri.parse(url));
-      final response = await request.close();
+      final response = await request.close().timeout(_requestTimeout);
       if (response.statusCode != HttpStatus.ok) {
         _showError();
         return;
@@ -74,7 +81,9 @@ class _AppStorePageState extends State<AppStorePage> {
       var lastPercent = -1;
 
       try {
-        await for (final chunk in response) {
+        // Inactivity deadline: a slow but progressing download is never cut off,
+        // while one that stops delivering is.
+        await for (final chunk in response.timeout(_stallTimeout)) {
           sink.add(chunk);
           received += chunk.length;
           if (total > 0) {
@@ -93,6 +102,12 @@ class _AppStorePageState extends State<AppStorePage> {
       await _channel.installApk(file.path);
     } catch (e) {
       debugPrint("App store install failed: $e");
+      // A partial file would otherwise be handed to the installer on a retry.
+      try {
+        final dir = await getTemporaryDirectory();
+        final partial = File("${dir.path}/${_sanitizeApkName(suggestedName)}");
+        if (await partial.exists()) await partial.delete();
+      } catch (_) {}
       _showError();
     } finally {
       client.close();
@@ -152,8 +167,8 @@ class _AppStorePageState extends State<AppStorePage> {
     final request =
         await client.getUrl(Uri.parse("https://github.com/$repo/releases/latest"));
     request.followRedirects = false;
-    final response = await request.close();
-    await response.drain();
+    final response = await request.close().timeout(_requestTimeout);
+    await response.drain().timeout(_requestTimeout);
     if (response.statusCode < 300 || response.statusCode >= 400) return null;
     final location = response.headers.value(HttpHeaders.locationHeader) ?? "";
     return RegExp(r'/tag/([^/?#]+)').firstMatch(location)?.group(1);
@@ -163,9 +178,10 @@ class _AppStorePageState extends State<AppStorePage> {
   Future<(String, String)?> _resolveApkUrl(HttpClient client, String repo, String tag) async {
     final request = await client
         .getUrl(Uri.parse("https://github.com/$repo/releases/expanded_assets/$tag"));
-    final response = await request.close();
+    final response = await request.close().timeout(_requestTimeout);
     if (response.statusCode != HttpStatus.ok) return null;
-    final html = await response.transform(utf8.decoder).join();
+    final html =
+        await response.transform(utf8.decoder).join().timeout(_requestTimeout);
     final matches = RegExp(r'href="([^"]*?\.apk)"', caseSensitive: false)
         .allMatches(html)
         .map((m) => m.group(1)!)
