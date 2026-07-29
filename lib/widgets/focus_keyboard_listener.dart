@@ -55,7 +55,8 @@ class _FocusKeyboardListenerState extends State<FocusKeyboardListener> {
       case KeyUpEvent:
         return _keyUpEvent(context, keyEvent.logicalKey);
     }
-    return KeyEventResult.handled;
+    // Anything else is not ours to consume.
+    return KeyEventResult.ignored;
   }
 
   KeyEventResult _keyDownEvent(BuildContext context, LogicalKeyboardKey key) {

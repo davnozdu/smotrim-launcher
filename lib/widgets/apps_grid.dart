@@ -28,6 +28,12 @@ import '../models/category.dart';
 import '../providers/settings_service.dart';
 import 'category_container_common.dart';
 
+/// A grid category, rendered as a sliver.
+///
+/// This used to be a `GridView` with `shrinkWrap: true` nested in the home
+/// screen's scroll view, which forced every card in the category to be built and
+/// laid out even when it was far below the fold. As a real [SliverGrid] the
+/// viewport only builds what is on screen (plus its cache extent).
 class AppsGrid extends StatelessWidget
 {
   final Category category;
@@ -35,7 +41,7 @@ class AppsGrid extends StatelessWidget
 
   final bool isFirstSection;
 
-  AppsGrid({
+  const AppsGrid({
     Key? key,
     required this.category,
     required this.applications,
@@ -46,58 +52,58 @@ class AppsGrid extends StatelessWidget
   Widget build(BuildContext context) {
     Widget categoryContent;
     if (applications.isEmpty) {
-      categoryContent = categoryContainerEmptyState(context);
+      categoryContent = SliverToBoxAdapter(child: categoryContainerEmptyState(context));
     }
     else {
-      categoryContent = GridView.custom(
-        clipBehavior: Clip.none,
-        primary: false,
-        shrinkWrap: true,
-        gridDelegate: _buildSliverGridDelegate(),
-        padding: EdgeInsets.all(16),
-        childrenDelegate: SliverChildBuilderDelegate(
-          childCount: applications.length,
-          findChildIndexCallback: _findChildIndex,
-          (context, index) {
-            final isFirstInRow = index % category.columnsCount == 0;
-            final isLastInRow = index % category.columnsCount == category.columnsCount - 1 || index == applications.length - 1;
+      categoryContent = SliverPadding(
+        padding: const EdgeInsets.all(16),
+        sliver: SliverGrid(
+          gridDelegate: _buildSliverGridDelegate(),
+          delegate: SliverChildBuilderDelegate(
+            childCount: applications.length,
+            findChildIndexCallback: _findChildIndex,
+            (context, index) {
+              final isFirstInRow = index % category.columnsCount == 0;
+              final isLastInRow = index % category.columnsCount == category.columnsCount - 1 || index == applications.length - 1;
 
-            return AppCard(
-              key: Key(applications[index].packageName),
-              category: category,
-              application: applications[index],
-              autofocus: index == 0,
-              handleUpNavigationToSettings: isFirstSection && index < category.columnsCount,
-              isFirstInRow: isFirstInRow,
-              isLastInRow: isLastInRow,
-              onMove: (direction) => _onMove(context, direction, index),
-              onMoveEnd: () => _saveOrder(context)
-            );
-          }
-        )
+              return AppCard(
+                key: Key(applications[index].packageName),
+                category: category,
+                application: applications[index],
+                autofocus: index == 0,
+                handleUpNavigationToSettings: isFirstSection && index < category.columnsCount,
+                isFirstInRow: isFirstInRow,
+                isLastInRow: isLastInRow,
+                onMove: (direction) => _onMove(context, direction, index),
+                onMoveEnd: () => _saveOrder(context)
+              );
+            }
+          )
+        ),
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Selector<SettingsService, bool>(
-          selector: (context, service) => service.showCategoryTitles,
-          builder: (context, showCategoriesTitle, _) {
-            if (showCategoriesTitle) {
-              return Padding(
-                padding: const EdgeInsets.only(left: 16, bottom: 8),
-                child: Text(localizedCategoryName(context, category.name),
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleLarge!
-                      .copyWith(shadows: [const Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 8)])
-                ),
-              );
-            }
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Selector<SettingsService, bool>(
+            selector: (context, service) => service.showCategoryTitles,
+            builder: (context, showCategoriesTitle, _) {
+              if (showCategoriesTitle) {
+                return Padding(
+                  padding: const EdgeInsets.only(left: 16, bottom: 8),
+                  child: Text(localizedCategoryName(context, category.name),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge!
+                        .copyWith(shadows: [const Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 8)])
+                  ),
+                );
+              }
 
-            return SizedBox.shrink();
-          }
+              return const SizedBox.shrink();
+            }
+          ),
         ),
         categoryContent
       ],
@@ -106,8 +112,8 @@ class AppsGrid extends StatelessWidget
 
 
   int? _findChildIndex(Key key) {
-    final valueKey = key as ValueKey<String>;
-    final index = applications.indexWhere((app) => app.packageName == valueKey.value);
+    if (key is! ValueKey<String>) return null;
+    final index = applications.indexWhere((app) => app.packageName == key.value);
     return index >= 0 ? index : null;
   }
 
