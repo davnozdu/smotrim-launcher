@@ -77,6 +77,12 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
     ),
   );
   
+  // Created once: the pulse used to allocate a CurvedAnimation on every build.
+  late final Animation<double> _highlightOpacity = Tween<double>(
+    begin: 0.4,
+    end: 1.0,
+  ).animate(CurvedAnimation(parent: _animation, curve: Curves.easeInOut));
+
   double _bumpDirection = 0;
   late final AnimationController _bumpController = AnimationController(
     vsync: this,
@@ -351,42 +357,54 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                                     }
                                     if (animationEnabled) {
                                       _setHighlightAnimating(true);
-                                      return AnimatedBuilder(
-                                        animation: CurvedAnimation(parent: _animation, curve: Curves.easeInOut),
-                                        builder: (context, child) {
-                                          final opacity = 0.4 + (_animation.value * 0.6);
-
-                                          return IgnorePointer(
-                                            child: Stack(
-                                              fit: StackFit.expand,
-                                              children: [
-                                                // Outer outline (Accent Color)
-                                                Container(
+                                      // FadeTransition, not AnimatedBuilder.
+                                      //
+                                      // The builder version rebuilt the whole
+                                      // outline -- Stack, two Containers, two
+                                      // BoxDecorations, two Borders -- on every
+                                      // frame, and allocated a fresh
+                                      // CurvedAnimation on every build to do it.
+                                      // Since a TV always has something focused,
+                                      // that ran forever: measured at ~40% CPU
+                                      // on an idle home screen.
+                                      //
+                                      // FadeTransition animates an opacity layer
+                                      // instead. The outline below is built once
+                                      // per rebuild and then only composited, so
+                                      // the steady state costs nothing to speak
+                                      // of.
+                                      return IgnorePointer(
+                                        child: FadeTransition(
+                                          opacity: _highlightOpacity,
+                                          child: Stack(
+                                            fit: StackFit.expand,
+                                            children: [
+                                              // Outer outline (Accent Color)
+                                              Container(
+                                                decoration: BoxDecoration(
+                                                  borderRadius: borderRadius,
+                                                  border: Border.all(
+                                                    color: accentColor,
+                                                    width: 2
+                                                  ),
+                                                ),
+                                              ),
+                                              // Inner outline (Black)
+                                              Padding(
+                                                padding: const EdgeInsets.all(2),
+                                                child: Container(
                                                   decoration: BoxDecoration(
-                                                    borderRadius: borderRadius,
+                                                    borderRadius: innerBorderRadius,
                                                     border: Border.all(
-                                                      color: accentColor.withOpacity(opacity),
+                                                      color: Colors.black,
                                                       width: 2
                                                     ),
                                                   ),
                                                 ),
-                                                // Inner outline (Black)
-                                                Padding(
-                                                  padding: const EdgeInsets.all(2),
-                                                  child: Container(
-                                                    decoration: BoxDecoration(
-                                                      borderRadius: innerBorderRadius,
-                                                      border: Border.all(
-                                                        color: Colors.black.withOpacity(opacity),
-                                                        width: 2
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        },
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       );
                                     } else {
                                       _setHighlightAnimating(false);
