@@ -335,10 +335,9 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                             ],
                           ),
                         ),
-                                Selector<SettingsService, (bool, String)>(
-                                  selector: (_, settingsService) => (settingsService.appHighlightAnimationEnabled, settingsService.accentColorHex),
-                                  builder: (context, settings, _) {
-                                    final (_, accentColorHex) = settings;
+                                Selector<SettingsService, String>(
+                                  selector: (_, settingsService) => settingsService.accentColorHex,
+                                  builder: (context, accentColorHex, _) {
                                     final accentColor = _parseAccentColor(accentColorHex);
 
                                     if (shouldHighlight && !hideHighlightOutlineOnHomescreen) {

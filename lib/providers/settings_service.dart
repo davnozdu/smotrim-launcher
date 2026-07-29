@@ -24,7 +24,6 @@ import 'package:flutter/material.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _appHighlightAnimationEnabledKey = "app_highlight_animation_enabled";
 const _appKeyClickEnabledKey = "app_key_click_enabled";
 const _autoHideAppBarKey = "auto_hide_app_bar";
 const _gradientUuidKey = "gradient_uuid";
@@ -72,7 +71,6 @@ class SettingsService extends ChangeNotifier {
   static final defaultTimeFormat = "H:mm";
   final SharedPreferences _sharedPreferences;
 
-  late bool _appHighlightAnimationEnabled;
   late bool _appKeyClickEnabled;
   late bool _autoHideAppBarEnabled;
   late bool _showCategoryTitles;
@@ -92,8 +90,6 @@ class SettingsService extends ChangeNotifier {
   late bool _showInputsWidgetInStatusBar;
   late String _subscriberId;
   late String _subscriberPin;
-
-  bool get appHighlightAnimationEnabled => _appHighlightAnimationEnabled;
 
   bool get appKeyClickEnabled => _appKeyClickEnabled;
 
@@ -139,7 +135,6 @@ class SettingsService extends ChangeNotifier {
   }
 
   SettingsService(this._sharedPreferences) {
-    _appHighlightAnimationEnabled = _sharedPreferences.getBool(_appHighlightAnimationEnabledKey) ?? true;
     _appKeyClickEnabled = _sharedPreferences.getBool(_appKeyClickEnabledKey) ?? true;
     _autoHideAppBarEnabled = _sharedPreferences.getBool(_autoHideAppBarKey) ?? false;
     _showCategoryTitles = _sharedPreferences.getBool(_showCategoryTitlesKey) ?? true;
@@ -185,12 +180,6 @@ class SettingsService extends ChangeNotifier {
     final value = _randomDigits(length);
     _sharedPreferences.setString(key, value);
     return value;
-  }
-
-  Future<void> setAppHighlightAnimationEnabled(bool value) async {
-    await _sharedPreferences.setBool(_appHighlightAnimationEnabledKey, value);
-    _appHighlightAnimationEnabled = value;
-    notifyListeners();
   }
 
   Future<void> setAppKeyClickEnabled(bool value) async {
