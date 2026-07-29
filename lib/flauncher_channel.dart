@@ -136,13 +136,30 @@ class FLauncherChannel {
     return (map as Map).cast<String, dynamic>();
   }
 
-  /// Pushes the same map as [getActiveNetworkInformation] whenever the active
-  /// network changes, so callers do not have to poll for it.
+  /// Pushes the current network information whenever the active network
+  /// changes, so callers do not have to poll for it.
+  ///
+  /// The native side wraps each event as `{name: ..., arguments: {...}}`, and
+  /// the payload inside `arguments` is the same shape as
+  /// [getActiveNetworkInformation] returns. Reading the envelope as if it were
+  /// the payload yields nothing but nulls -- which a caller then reads as "no
+  /// network", so every event reported the device as offline.
+  ///
+  /// An event with no recognisable payload is dropped rather than reported as
+  /// offline; only an explicit loss counts as being disconnected.
   StreamSubscription addNetworkChangedListener(
           void Function(Map<String, dynamic>) listener) =>
       _networkEventChannel.receiveBroadcastStream().listen(
         (event) {
-          if (event is Map) listener(event.cast<String, dynamic>());
+          if (event is! Map) return;
+          final name = event["name"];
+          final arguments = event["arguments"];
+
+          if (arguments is Map) {
+            listener(arguments.cast<String, dynamic>());
+          } else if (name == "NETWORK_LOST") {
+            listener(const {"networkAccess": false, "internetAccess": false});
+          }
         },
         onError: (Object error) {
           debugPrint("Network event stream error: $error");

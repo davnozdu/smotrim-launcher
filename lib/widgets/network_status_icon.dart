@@ -27,7 +27,9 @@ class NetworkStatusIcon extends StatefulWidget {
 }
 
 class _NetworkStatusIconState extends State<NetworkStatusIcon> {
-  static const int _networkTypeEthernet = 2; // NetworkUtils.NETWORK_TYPE_ETHERNET
+  // Must match NetworkUtils: 0 cellular, 1 wifi, 2 VPN, 3 wired, 4 unknown.
+  // This used to be 2, which is VPN -- a wired box never showed its ethernet icon.
+  static const int _networkTypeWired = 3;
 
   final FLauncherChannel _channel = FLauncherChannel();
   StreamSubscription? _subscription;
@@ -57,7 +59,7 @@ class _NetworkStatusIconState extends State<NetworkStatusIcon> {
 
   void _apply(Map<String, dynamic> info) {
     final available = (info["networkAccess"] as bool?) ?? false;
-    final ethernet = (info["networkType"] as int?) == _networkTypeEthernet;
+    final ethernet = (info["networkType"] as int?) == _networkTypeWired;
     if (mounted && (available != _available || ethernet != _ethernet)) {
       setState(() {
         _available = available;
