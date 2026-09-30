@@ -41,6 +41,8 @@ class _PlayerInstallButtonState extends State<PlayerInstallButton> {
   static const String _repo = "davnozdu/smotrim-player";
   static const String _apkUrl =
       "https://github.com/$_repo/releases/latest/download/app-release.apk";
+  static const Duration _requestTimeout = Duration(seconds: 30);
+  static const Duration _stallTimeout = Duration(minutes: 2);
 
   final FLauncherChannel _channel = FLauncherChannel();
   bool _focused = false;
@@ -68,8 +70,8 @@ class _PlayerInstallButtonState extends State<PlayerInstallButton> {
       final request =
           await client.getUrl(Uri.parse("https://github.com/$_repo/releases/latest"));
       request.followRedirects = false;
-      final response = await request.close();
-      await response.drain();
+      final response = await request.close().timeout(_requestTimeout);
+      await response.drain().timeout(_requestTimeout);
       if (response.statusCode < 300 || response.statusCode >= 400) return null;
       final location = response.headers.value(HttpHeaders.locationHeader) ?? "";
       return RegExp(r'/tag/([^/?#]+)').firstMatch(location)?.group(1);
@@ -85,6 +87,7 @@ class _PlayerInstallButtonState extends State<PlayerInstallButton> {
     setState(() => _phase = _Phase.checking);
 
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
+    File? file;
     try {
       final tag = await _fetchLatestTag(client);
       if (tag == null) {
@@ -101,21 +104,22 @@ class _PlayerInstallButtonState extends State<PlayerInstallButton> {
       if (mounted) setState(() { _phase = _Phase.downloading; _progress = 0; });
 
       final request = await client.getUrl(Uri.parse(_apkUrl));
-      final response = await request.close();
+      final response = await request.close().timeout(_requestTimeout);
       if (response.statusCode != HttpStatus.ok) {
         _showMessage(l.downloadFailed);
         return;
       }
 
       final dir = await getTemporaryDirectory();
-      final file = File("${dir.path}/smotrim-player.apk");
-      final sink = file.openWrite();
+      final downloadFile = File("${dir.path}/smotrim-player.apk");
+      file = downloadFile;
+      final sink = downloadFile.openWrite();
       final total = response.contentLength;
       var received = 0;
       var lastPercent = -1;
 
       try {
-        await for (final chunk in response) {
+        await for (final chunk in response.timeout(_stallTimeout)) {
           sink.add(chunk);
           received += chunk.length;
           if (total > 0) {
@@ -132,9 +136,14 @@ class _PlayerInstallButtonState extends State<PlayerInstallButton> {
         await sink.close();
       }
 
-      await _channel.installApk(file.path);
+      await _channel.installApk(downloadFile.path);
     } catch (e) {
       debugPrint("Player install failed: $e");
+      if (file != null) {
+        try {
+          if (await file.exists()) await file.delete();
+        } catch (_) {}
+      }
       _showMessage(l.downloadFailed);
     } finally {
       client.close();
