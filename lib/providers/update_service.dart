@@ -105,7 +105,8 @@ class UpdateService extends ChangeNotifier {
   }
 
   Future<void> checkForUpdate() async {
-    if (_status == UpdateStatus.downloading) return;
+    if (_disposed || _status == UpdateStatus.downloading ||
+        _status == UpdateStatus.checking) return;
     _setStatus(UpdateStatus.checking);
     try {
       final latest = await _fetchLatest();
@@ -156,7 +157,8 @@ class UpdateService extends ChangeNotifier {
 
   /// Downloads the latest APK and launches the system installer.
   Future<bool> downloadAndInstall() async {
-    if (_status == UpdateStatus.downloading) return false;
+    if (_disposed || _status == UpdateStatus.downloading ||
+        _status == UpdateStatus.checking) return false;
     _downloadProgress = 0;
     _setStatus(UpdateStatus.downloading);
 
