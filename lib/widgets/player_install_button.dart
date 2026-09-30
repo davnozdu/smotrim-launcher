@@ -13,6 +13,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flauncher/apk_downloads.dart';
 import 'package:flauncher/flauncher_channel.dart';
 import 'package:flauncher/l10n/app_localizations.dart';
 
@@ -37,6 +38,9 @@ class PlayerInstallButton extends StatefulWidget {
 enum _Phase { idle, checking, downloading }
 
 class _PlayerInstallButtonState extends State<PlayerInstallButton> {
+  static const Duration _requestTimeout = Duration(seconds: 30);
+  static const Duration _stallTimeout = Duration(minutes: 2);
+
   static const String _playerPackage = "cz.smotrim.player";
   static const String _repo = "davnozdu/smotrim-player";
   static const String _apkUrl =
@@ -68,8 +72,8 @@ class _PlayerInstallButtonState extends State<PlayerInstallButton> {
       final request =
           await client.getUrl(Uri.parse("https://github.com/$_repo/releases/latest"));
       request.followRedirects = false;
-      final response = await request.close();
-      await response.drain();
+      final response = await request.close().timeout(_requestTimeout);
+      await response.drain().timeout(_requestTimeout);
       if (response.statusCode < 300 || response.statusCode >= 400) return null;
       final location = response.headers.value(HttpHeaders.locationHeader) ?? "";
       return RegExp(r'/tag/([^/?#]+)').firstMatch(location)?.group(1);
@@ -85,6 +89,7 @@ class _PlayerInstallButtonState extends State<PlayerInstallButton> {
     setState(() => _phase = _Phase.checking);
 
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
+    File? partial;
     try {
       final tag = await _fetchLatestTag(client);
       if (tag == null) {
@@ -101,21 +106,26 @@ class _PlayerInstallButtonState extends State<PlayerInstallButton> {
       if (mounted) setState(() { _phase = _Phase.downloading; _progress = 0; });
 
       final request = await client.getUrl(Uri.parse(_apkUrl));
-      final response = await request.close();
+      final response = await request.close().timeout(_requestTimeout);
       if (response.statusCode != HttpStatus.ok) {
         _showMessage(l.downloadFailed);
         return;
       }
 
       final dir = await getTemporaryDirectory();
+      await deleteStaleApks(dir);
       final file = File("${dir.path}/smotrim-player.apk");
+      partial = file;
       final sink = file.openWrite();
       final total = response.contentLength;
       var received = 0;
       var lastPercent = -1;
 
       try {
-        await for (final chunk in response) {
+        // connectionTimeout covers only the handshake. Without these deadlines a
+        // connection that went quiet left the button stuck on "downloading"
+        // until the launcher restarted.
+        await for (final chunk in response.timeout(_stallTimeout)) {
           sink.add(chunk);
           received += chunk.length;
           if (total > 0) {
@@ -131,10 +141,15 @@ class _PlayerInstallButtonState extends State<PlayerInstallButton> {
         // the stream errors out mid-download.
         await sink.close();
       }
+      checkDownloadComplete(received, total);
 
       await _channel.installApk(file.path);
     } catch (e) {
       debugPrint("Player install failed: $e");
+      // A truncated file must never reach the installer on a retry.
+      try {
+        if (partial != null && await partial.exists()) await partial.delete();
+      } catch (_) {}
       _showMessage(l.downloadFailed);
     } finally {
       client.close();

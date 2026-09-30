@@ -56,7 +56,19 @@ class SmotrimBanner extends StatelessWidget {
                 ],
               ),
             ),
-            Text("— ${localizations.bannerTagline}", style: textStyle),
+            // The news link is the eye-catcher of the bar: bright amber and
+            // heavier than the white brand text around it.
+            Text(
+              "— ${localizations.bannerTagline}",
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFFFFC107),
+                shadows: [
+                  Shadow(color: Colors.black, offset: Offset(0, 1), blurRadius: 4),
+                ],
+              ),
+            ),
             ],
           ),
         ),

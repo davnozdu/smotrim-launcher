@@ -71,6 +71,11 @@ public class NetworkEventStreamHandler implements EventChannel.StreamHandler
         try {
             if (_networkCallback != null) {
                 _connectivityManager.unregisterNetworkCallback(_networkCallback);
+                // The telephony listener it may have registered on a cellular
+                // network outlived the callback, holding the dead event sink.
+                if (_networkCallback instanceof NetworkCallbackImpl callback) {
+                    callback.releaseTelephony();
+                }
                 _networkCallback = null;
             }
             if (_networkChangeReceiver != null) {
@@ -101,6 +106,19 @@ public class NetworkEventStreamHandler implements EventChannel.StreamHandler
             }
             else {
                 _eventSink.success(map);
+            }
+        }
+
+        void releaseTelephony() {
+            if (_phoneStateListener != null) {
+                try {
+                    TelephonyManager manager = (TelephonyManager) _context.getSystemService(Context.TELEPHONY_SERVICE);
+                    //noinspection deprecation
+                    manager.listen(_phoneStateListener, PhoneStateListener.LISTEN_NONE);
+                } catch (RuntimeException e) {
+                    e.printStackTrace();
+                }
+                _phoneStateListener = null;
             }
         }
 
@@ -154,6 +172,20 @@ public class NetworkEventStreamHandler implements EventChannel.StreamHandler
         public NetworkCallbackImplApi31(EventChannel.EventSink eventSink, Handler handler)
         {
             super(eventSink, handler);
+        }
+
+        @Override
+        void releaseTelephony() {
+            super.releaseTelephony();
+            if (_telephonyCallback != null) {
+                try {
+                    TelephonyManager manager = (TelephonyManager) _context.getSystemService(Context.TELEPHONY_SERVICE);
+                    manager.unregisterTelephonyCallback(_telephonyCallback);
+                } catch (RuntimeException e) {
+                    e.printStackTrace();
+                }
+                _telephonyCallback = null;
+            }
         }
 
         @Override

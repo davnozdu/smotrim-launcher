@@ -102,19 +102,36 @@ public class LauncherAppsEventStreamHandler implements EventChannel.StreamHandle
             });
         }
 
+        // Removal goes through the same queue as everything else. Emitted
+        // directly, it could overtake an add still being resolved for the same
+        // package -- a quick reinstall then ended with the app missing.
         @Override
         public void onPackageRemoved(String packageName, UserHandle user) {
-            _eventSink.success(new java.util.HashMap<String, Object>() {{ put("action", "PACKAGE_REMOVED"); put("packageName", packageName); }});
+            emitResolved(() -> {
+                _activity.artworkCache().invalidate(packageName);
+                Map<String, Object> event = new java.util.HashMap<>();
+                event.put("action", "PACKAGE_REMOVED");
+                event.put("packageName", packageName);
+                return event;
+            });
         }
 
         @Override
         public void onPackageAdded(String packageName, UserHandle user) {
-            emitResolved(() -> singleAppEvent("PACKAGE_ADDED", packageName));
+            emitResolved(() -> {
+                _activity.artworkCache().invalidate(packageName);
+                return singleAppEvent("PACKAGE_ADDED", packageName);
+            });
         }
 
+        // Also fires when a component is enabled or disabled, which can change
+        // the artwork without touching the version the disk cache is keyed on.
         @Override
         public void onPackageChanged(String packageName, UserHandle user) {
-            emitResolved(() -> singleAppEvent("PACKAGE_CHANGED", packageName));
+            emitResolved(() -> {
+                _activity.artworkCache().invalidate(packageName);
+                return singleAppEvent("PACKAGE_CHANGED", packageName);
+            });
         }
 
         private Map<String, Object> singleAppEvent(String action, String packageName) {
@@ -133,6 +150,7 @@ public class LauncherAppsEventStreamHandler implements EventChannel.StreamHandle
                 List<Map<String, Serializable>> applications = new ArrayList<>(packageNames.length);
 
                 for (String name : packageNames) {
+                    _activity.artworkCache().invalidate(name);
                     Map<String, Serializable> application = _activity.getApplication(name);
 
                     if (!application.isEmpty()) {

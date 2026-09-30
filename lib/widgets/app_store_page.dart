@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flauncher/apk_downloads.dart';
 import 'package:flauncher/flauncher_channel.dart';
 import 'package:flauncher/l10n/app_localizations.dart';
 
@@ -44,6 +45,7 @@ class AppStorePage extends StatefulWidget {
 class _AppStorePageState extends State<AppStorePage> {
   final FLauncherChannel _channel = FLauncherChannel();
   InAppWebViewController? _controller;
+  bool _left = false;
 
   bool _pageLoading = true;
   bool _downloading = false;
@@ -73,6 +75,7 @@ class _AppStorePageState extends State<AppStorePage> {
       }
 
       final dir = await getTemporaryDirectory();
+      await deleteStaleApks(dir);
       final name = _sanitizeApkName(suggestedName);
       final file = File("${dir.path}/$name");
       final sink = file.openWrite();
@@ -98,6 +101,7 @@ class _AppStorePageState extends State<AppStorePage> {
         // close() flushes and releases the handle even if the stream errors out.
         await sink.close();
       }
+      checkDownloadComplete(received, total);
 
       await _channel.installApk(file.path);
     } catch (e) {
@@ -214,6 +218,35 @@ class _AppStorePageState extends State<AppStorePage> {
     );
   }
 
+  /// Leaves the store and makes sure nothing of it keeps running.
+  ///
+  /// The store is opened only on demand and must be fully unloaded when the
+  /// user is done. Popping the route destroys the WebView, but only once the
+  /// exit animation has played -- until then the page's scripts, timers and any
+  /// media kept going. Stopping it first ends that immediately. The controller
+  /// is dropped here too, so no late callback touches a destroyed WebView.
+  void _leave() {
+    // The route stays mounted through its exit animation; a second Back or
+    // exitStore in that window must not pop the home screen underneath.
+    if (!mounted || _left) return;
+    _left = true;
+    final controller = _controller;
+    _controller = null;
+    if (controller != null) {
+      controller.stopLoading().catchError((_) {});
+      controller
+          .loadUrl(urlRequest: URLRequest(url: WebUri("about:blank")))
+          .catchError((_) {});
+    }
+    Navigator.of(context).pop();
+  }
+
+  @override
+  void dispose() {
+    _controller = null;
+    super.dispose();
+  }
+
   // The site is the single owner of Back: it closes its exit dialog / detail
   // card, or shows the "Exit the store?" confirm. We just relay Back to it and
   // never pop here — leaving happens only via the `exitStore` JS handler. The
@@ -224,7 +257,7 @@ class _AppStorePageState extends State<AppStorePage> {
           source: "window.__hubBack ? (window.__hubBack(), true) : false");
       if (handled == true) return;
     } catch (_) {}
-    if (mounted) Navigator.of(context).pop();
+    _leave();
   }
 
   // D-pad keys → forwarded into the page as a synthetic keydown on `window`.
@@ -313,16 +346,17 @@ class _AppStorePageState extends State<AppStorePage> {
                   controller.addJavaScriptHandler(
                     handlerName: "exitStore",
                     callback: (_) {
-                      if (mounted) Navigator.of(context).pop();
+                      _leave();
                       return null;
                     },
                   );
                 },
                 onLoadStart: (controller, url) {
-                  if (mounted) setState(() => _pageLoading = true);
+                  if (mounted && !_left) setState(() => _pageLoading = true);
                 },
                 onLoadStop: (controller, url) async {
-                  if (mounted) setState(() => _pageLoading = false);
+                  if (!mounted || _controller == null) return;
+                  setState(() => _pageLoading = false);
                   // Nudge focus into the page so the site's JS key handlers
                   // start receiving D-pad events immediately.
                   await controller.evaluateJavascript(source: "window.focus();");

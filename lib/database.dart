@@ -171,6 +171,10 @@ class FLauncherDatabase extends _$FLauncherDatabase
         beforeOpen: (openingDetails) async {
           await customStatement('PRAGMA foreign_keys = ON;');
           await customStatement('PRAGMA journal_mode = WAL;');
+          // With WAL this cannot corrupt the database, even on a power cut (a
+          // routine event for a TV box); at worst the last write is lost. It
+          // saves an fsync per write, e.g. on every app launch.
+          await customStatement('PRAGMA synchronous = NORMAL;');
           wasCreated = openingDetails.wasCreated;
         },
       );

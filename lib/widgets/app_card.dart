@@ -63,20 +63,14 @@ class AppCard extends StatefulWidget
   State<AppCard> createState() => _AppCardState();
 }
 
-class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
+class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
   bool _moving = false;
   bool _clicked = false;
   late FocusNode _focusNode;
   int _seenBannerVersion = 0;
 
   late Future<(AppImageType, ImageProvider)> _appImageLoadFuture;
-  late final AnimationController _animation = AnimationController(
-    vsync: this,
-    duration: const Duration(
-      milliseconds: 1200,
-    ),
-  );
-  
+
   double _bumpDirection = 0;
   late final AnimationController _bumpController = AnimationController(
     vsync: this,
@@ -148,7 +142,6 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
       _appsService!.removeListener(_onAppsServiceChanged);
     }
     FocusManager.instance.removeHighlightModeListener(_focusHighlightModeChanged);
-    _animation.dispose();
     _bumpController.dispose();
     _focusNode.dispose();
 
@@ -342,11 +335,9 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
 
                                     if (shouldHighlight && !hideHighlightOutlineOnHomescreen) {
                                       if (themes == 'premium') {
-                                        _setHighlightAnimating(false);
                                         return const SizedBox();
                                       }
                                       if (themes == 'classic') {
-                                        _setHighlightAnimating(false);
                                         return IgnorePointer(
                                           child: Stack(
                                             fit: StackFit.expand,
@@ -365,7 +356,6 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                                         );
                                       }
                                       {
-                                        _setHighlightAnimating(false);
                                         return IgnorePointer(
                                           child: Stack(
                                             fit: StackFit.expand,
@@ -397,7 +387,6 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                                       }
                                     }
 
-                                    _setHighlightAnimating(false);
                                     return const SizedBox();
                                   },
                                 ),
@@ -529,24 +518,12 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
     setState(() { });
   }
 
-  /// The focus pulse is disabled.
-  ///
-  /// A repeating ticker makes Flutter build and composite a frame on every
-  /// vsync for as long as it runs -- and since a TV always has a card focused,
-  /// it ran forever. Measured on a Xiaomi Mi TV: 43% CPU with a card focused
-  /// against 0% with focus anywhere else, 37 of those points on the raster
-  /// thread. Making the outline cheaper to draw (a painter instead of rebuilt
-  /// widgets) and moving it out of the clipped, shadowed Material each shaved
-  /// only a few points, because the cost was the per-vsync frame itself rather
-  /// than any one thing in it.
-  ///
-  /// The outline is now static. Focus stays obvious from it and from the card
-  /// scaling up, and the launcher is idle when the user is.
-  void _setHighlightAnimating(bool animating) {
-    if (_animation.isAnimating) {
-      _animation.stop();
-    }
-  }
+  // There is deliberately no focus pulse. A repeating ticker makes Flutter
+  // build and composite a frame on every vsync for as long as it runs -- and
+  // since a TV always has a card focused, it ran forever. Measured on a Xiaomi
+  // Mi TV: 43% CPU with a card focused against 0% with focus anywhere else. The
+  // outline is static, and the launcher is idle when the user is. (Its unused
+  // AnimationController, one per card, is gone too.)
 
   bool _shouldHighlight(BuildContext context)
   {
@@ -644,8 +621,13 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
 
     if (_moving) {
 
-      WidgetsBinding.instance.addPostFrameCallback((_) => Scrollable.ensureVisible(context,
-          alignment: 0.1, duration: const Duration(milliseconds: 100), curve: Curves.easeInOut));
+      // A move can rebuild this card elsewhere and dispose this one before the
+      // frame ends; ensureVisible on a defunct context throws.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Scrollable.ensureVisible(context,
+            alignment: 0.1, duration: const Duration(milliseconds: 100), curve: Curves.easeInOut);
+      });
       if (key == LogicalKeyboardKey.arrowLeft) {
 
         widget.onMove(AxisDirection.left);

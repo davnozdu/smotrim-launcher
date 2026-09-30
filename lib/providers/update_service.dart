@@ -19,6 +19,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../apk_downloads.dart';
 import '../flauncher_channel.dart';
 
 enum UpdateStatus { idle, checking, available, downloading }
@@ -172,6 +173,7 @@ class UpdateService extends ChangeNotifier {
       }
 
       final dir = await getTemporaryDirectory();
+      await deleteStaleApks(dir);
       file = File("${dir.path}/$_apkAsset");
       final sink = file.openWrite();
       final total = response.contentLength;
@@ -202,6 +204,7 @@ class UpdateService extends ChangeNotifier {
         // the stream errors out mid-download.
         await sink.close();
       }
+      checkDownloadComplete(received, total);
 
       if (hasher != null && digest != null) {
         hasher.close();

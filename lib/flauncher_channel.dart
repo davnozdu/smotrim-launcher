@@ -35,10 +35,25 @@ class FLauncherChannel {
   // fallback below was unreachable and the caller waited forever.
   static const Duration _heavyTimeout = Duration(seconds: 6);
 
-  // Set once the background channel has let us down. Every later call goes
-  // straight to the main channel, so a broken background path costs one short
-  // delay for the whole session instead of one per call.
-  static bool _heavyChannelUsable = true;
+  // When the background channel last let us down. Calls go straight to the
+  // main channel for a while after that, so a broken background path costs one
+  // short delay instead of one per call.
+  //
+  // This used to be a flag that was never reset. A launcher runs for months,
+  // and a single slow answer -- say while the box was busy booting -- then
+  // pinned all icon work onto the Android main thread for the rest of that
+  // time. Now the background channel gets another chance after a cool-down.
+  static DateTime? _heavyChannelFailedAt;
+  static const Duration _heavyRetryAfter = Duration(minutes: 5);
+
+  static bool get _heavyChannelUsable {
+    final failedAt = _heavyChannelFailedAt;
+    return failedAt == null ||
+        DateTime.now().difference(failedAt) > _heavyRetryAfter;
+  }
+
+  static void _markHeavyChannelFailed() =>
+      _heavyChannelFailedAt = DateTime.now();
 
   /// Invokes [method] on the background channel, falling back to the main one
   /// on error *or* on timeout.
@@ -50,8 +65,8 @@ class FLauncherChannel {
             .timeout(_heavyTimeout) as T;
       } catch (e) {
         debugPrint("Background channel unusable ($method: $e); "
-            "falling back to the main channel for the rest of this session.");
-        _heavyChannelUsable = false;
+            "falling back to the main channel for a while.");
+        _markHeavyChannelFailed();
       }
     }
     return await _methodChannel.invokeMethod<T>(method, arguments) as T;
@@ -71,9 +86,9 @@ class FLauncherChannel {
         if (applications != null) return applications;
       } catch (e) {
         debugPrint("Background channel unusable (getApplications: $e); "
-            "falling back to the main channel for the rest of this session.");
+            "falling back to the main channel for a while.");
       }
-      _heavyChannelUsable = false;
+      _markHeavyChannelFailed();
     }
     List<Map<dynamic, dynamic>>? applications = await _methodChannel.invokeListMethod("getApplications");
     return applications!;

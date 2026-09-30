@@ -65,7 +65,7 @@ class _LruCache<K, V> {
   void clear() => _entries.clear();
 }
 
-class AppsService extends ChangeNotifier {
+class AppsService extends ChangeNotifier with WidgetsBindingObserver {
   final FLauncherChannel _fLauncherChannel;
   final FLauncherDatabase _database;
 
@@ -93,6 +93,45 @@ class AppsService extends ChangeNotifier {
   final Map<String, int> _bannerVersions = {};
 
   int bannerVersion(String packageName) => _bannerVersions[packageName] ?? 0;
+
+  // Apps known to ship no banner. Without this every such card, each time it
+  // scrolled back into view, asked the platform for a banner it already knew
+  // was not there, and that request queued ahead of real work on the serial
+  // background channel. Bounded by the number of installed apps.
+  final Set<String> _noBanner = {};
+
+  /// Forgets everything cached about [packageName]'s artwork and makes its card
+  /// reload it -- an updated app may well have a new icon.
+  void _invalidateArtwork(String packageName) {
+    _iconCache.remove(packageName);
+    _bannerCache.remove(packageName);
+    _noBanner.remove(packageName);
+    _bannerVersions[packageName] = bannerVersion(packageName) + 1;
+  }
+
+  /// Swaps a freshly reported [newApp] in for [existing], carrying over the
+  /// user's state: hidden flag, category placement and last launch.
+  void _replaceApp(App existing, App newApp) {
+    newApp.hidden = existing.hidden;
+    // Dropped before, so a "recently used" row forgot the app on every update.
+    newApp.lastLaunchedAt = existing.lastLaunchedAt;
+    newApp.categoryOrders = Map.from(existing.categoryOrders);
+    for (final categoryId in newApp.categoryOrders.keys) {
+      final category = _categoriesById[categoryId];
+      if (category == null) continue;
+      final index = category.applications.indexOf(existing);
+      if (index != -1) {
+        category.applications[index] = newApp;
+      } else if (!newApp.hidden) {
+        // A hidden app is absent from its categories on purpose. Adding it
+        // back unconditionally made it reappear on the home screen every time
+        // it was updated.
+        category.applications.add(newApp);
+        sortCategory(category);
+      }
+    }
+    _applications[newApp.packageName] = newApp;
+  }
 
   Map<int, Category> _categoriesById = Map();
   Map<String, Category>? _categoriesByNameCache;
@@ -148,15 +187,28 @@ class AppsService extends ChangeNotifier {
       .toList(growable: false);
 
   AppsService(this._fLauncherChannel, this._database) {
+    WidgetsBinding.instance.addObserver(this);
     _init();
+  }
+
+  // The system is short of memory (onTrimMemory). The framework drops its
+  // decoded-image cache on its own; the encoded bytes held here are ours to
+  // give back. Cards on screen keep showing what they already decoded, the
+  // rest simply fetch again when they next appear.
+  @override
+  void didHaveMemoryPressure() {
+    _iconCache.clear();
+    _bannerCache.clear();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _disposed = true;
     _appsChangedSubscription?.cancel();
     _iconCache.clear();
     _bannerCache.clear();
+    _noBanner.clear();
     super.dispose();
   }
 
@@ -198,8 +250,7 @@ class AppsService extends ChangeNotifier {
       }
 
       if (changedPackageName != null) {
-        _iconCache.remove(changedPackageName);
-        _bannerCache.remove(changedPackageName);
+        _invalidateArtwork(changedPackageName);
       }
 
       switch (event["action"]) {
@@ -212,20 +263,7 @@ class AppsService extends ChangeNotifier {
           App? existingApp = _applications[newApp.packageName];
 
           if (existingApp != null) {
-            newApp.hidden = existingApp.hidden;
-            newApp.categoryOrders = Map.from(existingApp.categoryOrders);
-            for (int categoryId in newApp.categoryOrders.keys) {
-              final category = _categoriesById[categoryId];
-              if (category != null) {
-                int index = category.applications.indexOf(existingApp);
-                if (index != -1) {
-                  category.applications[index] = newApp;
-                } else {
-                  category.applications.add(newApp);
-                }
-              }
-            }
-            _applications[newApp.packageName] = newApp;
+            _replaceApp(existingApp, newApp);
           } else {
             _applications[newApp.packageName] = newApp;
             final targetCategory =
@@ -246,34 +284,19 @@ class AppsService extends ChangeNotifier {
             App? existingApp = _applications[newApp.packageName];
 
             if (existingApp != null) {
-              newApp.hidden = existingApp.hidden;
-              newApp.categoryOrders = Map.from(existingApp.categoryOrders);
-              for (int categoryId in newApp.categoryOrders.keys) {
-                final category = _categoriesById[categoryId];
-                if (category != null) {
-                  int index = category.applications.indexOf(existingApp);
-                  if (index != -1) {
-                    category.applications[index] = newApp;
-                  } else {
-                    category.applications.add(newApp);
-                  }
-                }
-              }
-              _applications[newApp.packageName] = newApp;
+              _replaceApp(existingApp, newApp);
             } else {
               _applications[newApp.packageName] = newApp;
             }
-            _iconCache.remove(newApp.packageName);
-            _bannerCache.remove(newApp.packageName);
+            _invalidateArtwork(newApp.packageName);
           }
           break;
         case "PACKAGE_REMOVED":
           String packageName = event['packageName'];
           await _database.deleteApps([packageName]);
 
-          // Clear icon cache for removed app
-          _iconCache.remove(packageName);
-          _bannerCache.remove(packageName);
+          _invalidateArtwork(packageName);
+          _bannerVersions.remove(packageName);
 
           App? application = _applications.remove(packageName);
 
@@ -532,9 +555,13 @@ class AppsService extends ChangeNotifier {
       // Ignore other errors reading custom banner
     }
 
+    if (_noBanner.contains(packageName)) return Uint8List(0);
+
     final bytes = await _fLauncherChannel.getApplicationBanner(packageName);
     if (bytes.isNotEmpty) {
       _bannerCache[packageName] = bytes;
+    } else {
+      _noBanner.add(packageName);
     }
     return bytes;
   }

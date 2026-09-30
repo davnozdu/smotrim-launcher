@@ -61,10 +61,7 @@ class NotificationsService extends ChangeNotifier {
         if (localCallCount != _initCallCount || _disposed) return;
 
         _updateNotificationCounts(list);
-
-        _subscription = _channel.addNotificationsChangedListener((eventList) {
-          _updateNotificationCounts(eventList);
-        });
+        _subscribe();
       }
     } catch (e) {
       // A failed permission probe must not leave the service stuck as
@@ -76,13 +73,27 @@ class NotificationsService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Follows live notification changes. The native side sends the current
+  /// state as soon as it is listened to, so no separate fetch is needed.
+  void _subscribe() {
+    if (_subscription != null || _disposed) return;
+    _subscription = _channel.addNotificationsChangedListener(_updateNotificationCounts);
+  }
+
   Future<void> checkPermission() async {
     final localCallCount = ++_permissionCallCount;
     final bool allowed = await _channel.checkNotificationListenerPermission();
-    if (localCallCount != _permissionCallCount) return;
+    if (localCallCount != _permissionCallCount || _disposed) return;
 
     if (_hasPermission != allowed) {
       _hasPermission = allowed;
+      // Granted after startup: the subscription used to be made only in
+      // _init, so the badges stayed frozen until the launcher restarted.
+      if (allowed) {
+        _subscribe();
+      } else {
+        _updateNotificationCounts(const []);
+      }
       notifyListeners();
     }
   }

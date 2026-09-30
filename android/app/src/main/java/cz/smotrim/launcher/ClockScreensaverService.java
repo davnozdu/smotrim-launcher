@@ -78,9 +78,11 @@ public class ClockScreensaverService extends DreamService {
         targetCenterY = currentCenterY;
 
         // Update time every minute
+        // Re-armed for the turn of the next minute. A flat 60 s from whenever
+        // the dream started left the clock up to a minute behind.
         updateTimeRunnable = () -> {
             updateTime();
-            handler.postDelayed(updateTimeRunnable, 60000);
+            handler.postDelayed(updateTimeRunnable, 60000 - (System.currentTimeMillis() % 60000));
         };
 
         // Move clock every 30 seconds
