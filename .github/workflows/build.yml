@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - main
+      - 'audit/lifecycle-check-20260930'
     tags:
       - 'v*'
   workflow_dispatch:
@@ -70,7 +71,7 @@ jobs:
           fi
 
       - name: Build release APK (signed)
-        if: steps.keystore.outputs.signed == 'true'
+        if: steps.keystore.outputs.signed == 'true' && !startsWith(github.ref, 'refs/heads/audit/')
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VN="${GITHUB_REF_NAME#v}"
@@ -84,7 +85,7 @@ jobs:
           fi
 
       - name: Build debug APK (unsigned fallback)
-        if: steps.keystore.outputs.signed == 'false'
+        if: steps.keystore.outputs.signed == 'false' || startsWith(github.ref, 'refs/heads/audit/')
         run: flutter build apk --debug
 
       - name: Prepare release assets

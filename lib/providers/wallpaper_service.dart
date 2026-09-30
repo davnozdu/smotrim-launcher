@@ -34,6 +34,8 @@ class WallpaperService extends ChangeNotifier {
   late File _wallpaperDayFile;
   late File _wallpaperNightFile;
   Timer? _timer;
+  bool _disposed = false;
+  bool _filesReady = false;
 
   ImageProvider? _wallpaper;
   int _version = 0;
@@ -57,6 +59,7 @@ class WallpaperService extends ChangeNotifier {
   bool _lastTimeBasedEnabled = false;
 
   void _onSettingsChanged() {
+    if (_disposed || !_filesReady) return;
     final enabled = _settingsService.timeBasedWallpaperEnabled;
     if (enabled != _lastTimeBasedEnabled) {
       _lastTimeBasedEnabled = enabled;
@@ -67,6 +70,7 @@ class WallpaperService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _settingsService.removeListener(_onSettingsChanged);
     _timer?.cancel();
     super.dispose();
@@ -74,16 +78,20 @@ class WallpaperService extends ChangeNotifier {
 
   Future<void> _init() async {
     final directory = await getApplicationDocumentsDirectory();
+    if (_disposed) return;
     _wallpaperFile = File("${directory.path}/wallpaper");
     _wallpaperDayFile = File("${directory.path}/wallpaper_day");
     _wallpaperNightFile = File("${directory.path}/wallpaper_night");
+    _filesReady = true;
 
     _lastTimeBasedEnabled = _settingsService.timeBasedWallpaperEnabled;
     await _updateWallpaper();
+    if (_disposed) return;
     _updateTimerState();
   }
 
   void _updateTimerState() {
+    if (_disposed || !_filesReady) return;
     final enabled = _settingsService.timeBasedWallpaperEnabled;
     if (enabled && (_timer == null || !_timer!.isActive)) {
       _timer = Timer.periodic(const Duration(minutes: 1), (_) => _updateWallpaper());
@@ -115,7 +123,7 @@ class WallpaperService extends ChangeNotifier {
       }
     }
 
-    if (callId == _updateWallpaperCallCount) {
+    if (!_disposed && callId == _updateWallpaperCallCount) {
       if (_wallpaper != newWallpaper || force) {
         _wallpaper = newWallpaper;
         notifyListeners();

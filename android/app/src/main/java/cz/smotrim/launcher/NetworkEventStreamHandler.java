@@ -39,6 +39,7 @@ public class NetworkEventStreamHandler implements EventChannel.StreamHandler
 
     @Override
     public void onListen(Object arguments, EventChannel.EventSink events) {
+        onCancel(null);
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -68,18 +69,30 @@ public class NetworkEventStreamHandler implements EventChannel.StreamHandler
     public void onCancel(Object arguments) {
         // Registration in onListen can fail, leaving these null; unregistering a
         // null callback (or a receiver that was never registered) throws.
-        try {
-            if (_networkCallback != null) {
-                _connectivityManager.unregisterNetworkCallback(_networkCallback);
-                _networkCallback = null;
-            }
-            if (_networkChangeReceiver != null) {
-                _context.unregisterReceiver(_networkChangeReceiver);
-                _networkChangeReceiver = null;
+        ConnectivityManager.NetworkCallback callback = _networkCallback;
+        NetworkChangeReceiver receiver = _networkChangeReceiver;
+        _networkCallback = null;
+        _networkChangeReceiver = null;
+        if (callback != null) {
+            try {
+                _connectivityManager.unregisterNetworkCallback(callback);
+            } catch (RuntimeException e) {
+                e.printStackTrace();
             }
         }
-        catch (RuntimeException e) {
-            e.printStackTrace();
+        if (receiver != null) {
+            try {
+                _context.unregisterReceiver(receiver);
+            } catch (RuntimeException e) {
+                e.printStackTrace();
+            }
+        }
+        if (callback instanceof NetworkCallbackImpl) {
+            try {
+                ((NetworkCallbackImpl) callback).unregisterTelephony();
+            } catch (RuntimeException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -101,6 +114,15 @@ public class NetworkEventStreamHandler implements EventChannel.StreamHandler
             }
             else {
                 _eventSink.success(map);
+            }
+        }
+
+        protected void unregisterTelephony() {
+            if (_phoneStateListener != null) {
+                TelephonyManager manager = (TelephonyManager) _context.getSystemService(Context.TELEPHONY_SERVICE);
+                //noinspection deprecation
+                manager.listen(_phoneStateListener, PhoneStateListener.LISTEN_NONE);
+                _phoneStateListener = null;
             }
         }
 
@@ -129,12 +151,7 @@ public class NetworkEventStreamHandler implements EventChannel.StreamHandler
 
         @Override
         public void onLost(@NonNull Network network) {
-            if (_phoneStateListener != null) {
-                TelephonyManager manager = (TelephonyManager) _context.getSystemService(Context.TELEPHONY_SERVICE);
-                //noinspection deprecation
-                manager.listen(_phoneStateListener, PhoneStateListener.LISTEN_NONE);
-                _phoneStateListener = null;
-            }
+            unregisterTelephony();
 
             Network activeNetwork = _connectivityManager.getActiveNetwork();
             if (activeNetwork == null) {
@@ -154,6 +171,15 @@ public class NetworkEventStreamHandler implements EventChannel.StreamHandler
         public NetworkCallbackImplApi31(EventChannel.EventSink eventSink, Handler handler)
         {
             super(eventSink, handler);
+        }
+
+        @Override
+        protected void unregisterTelephony() {
+            if (_telephonyCallback != null) {
+                TelephonyManager manager = (TelephonyManager) _context.getSystemService(Context.TELEPHONY_SERVICE);
+                manager.unregisterTelephonyCallback(_telephonyCallback);
+                _telephonyCallback = null;
+            }
         }
 
         @Override
@@ -182,11 +208,7 @@ public class NetworkEventStreamHandler implements EventChannel.StreamHandler
 
         @Override
         public void onLost(@NonNull Network network) {
-            if (_telephonyCallback != null) {
-                TelephonyManager manager = (TelephonyManager) _context.getSystemService(Context.TELEPHONY_SERVICE);
-                manager.unregisterTelephonyCallback(_telephonyCallback);
-                _telephonyCallback = null;
-            }
+            unregisterTelephony();
 
             Network activeNetwork = _connectivityManager.getActiveNetwork();
             if (activeNetwork == null) {
@@ -198,5 +220,3 @@ public class NetworkEventStreamHandler implements EventChannel.StreamHandler
         }
     }
 }
-
-
