@@ -15,6 +15,7 @@ import 'package:flauncher/l10n/app_localizations.dart';
 /// Informational only (not focusable) and laid out as a bottom bar so it
 /// never overlaps the apps grid.
 class SmotrimBanner extends StatelessWidget {
+  static const String brand = "smotrim.cz";
   static const String phone = "+420608210867";
 
   const SmotrimBanner({super.key});
@@ -43,7 +44,7 @@ class SmotrimBanner extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             spacing: 16,
             children: [
-            Text(localizations.bannerTagline, style: textStyle),
+            const Text(brand, style: textStyle),
             const Text(
               phone,
               style: TextStyle(
@@ -55,6 +56,7 @@ class SmotrimBanner extends StatelessWidget {
                 ],
               ),
             ),
+            Text("— ${localizations.bannerTagline}", style: textStyle),
             ],
           ),
         ),
