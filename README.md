@@ -59,6 +59,9 @@ $ adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
 $ adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith
 # Delete Google acctounts
 $ adb shell am start -a android.settings.USER_SETTINGS
+# Disable com.google.android.apps.tv.launcherx (default launcher on CCwGTV) Alternative way
+$ adb shell pm disable-user --user 0 com.google.android.tvlauncher
+$ adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith
 ```
 
 #### Re-enable default launcher
