@@ -113,7 +113,7 @@
     "defaultLauncherDescription": "When set as the default launcher, the Home button will always return to Smotrim.CZ Launcher. The TV will also boot directly into Smotrim.CZ Launcher.",
     "inputs": "Inputs",
     "inputSources": "Input Sources",
-    "bannerTagline": "24n.cz — Czech and Prague news in Russian",
+    "bannerTagline": "Czech and Prague news in Russian",
     "renewSubscription": "Renew subscription",
     "subscriptionDialogTitle": "Subscription renewal",
     "subscriptionScanToPay": "Scan the QR code to pay",

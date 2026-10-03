@@ -87,6 +87,28 @@ public class MainActivity extends FlutterActivity {
     // background thread and completes the result from there.
     private static final String HEAVY_METHOD_CHANNEL = "cz.smotrim.launcher/method_bg";
 
+    // Kept so they can be cancelled when the engine goes away. Flutter does not
+    // do that itself, and each one is registered with a system service that
+    // would otherwise hold this activity -- and keep calling into a dead
+    // engine -- for as long as the process lives.
+    private LauncherAppsEventStreamHandler _appsStreamHandler;
+    private NetworkEventStreamHandler _networkStreamHandler;
+    private EventChannel.StreamHandler _notificationsStreamHandler;
+
+    private ArtworkCache _artworkCache;
+
+    synchronized ArtworkCache artworkCache() {
+        if (_artworkCache == null) _artworkCache = new ArtworkCache(this);
+        return _artworkCache;
+    }
+
+    // Notification changes arrive in bursts (a download's progress, a media
+    // player's position) and every one used to trigger a full binder query of
+    // all active notifications plus a message to Dart -- even while the user was
+    // watching TV with the launcher in the background. Changes are now batched
+    // to at most one query per this interval.
+    private static final long NOTIFICATIONS_THROTTLE_MS = 400;
+
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
         super.configureFlutterEngine(flutterEngine);
@@ -176,41 +198,86 @@ public class MainActivity extends FlutterActivity {
                     }
                 });
 
-        new EventChannel(messenger, APPS_EVENT_CHANNEL).setStreamHandler(
-                new LauncherAppsEventStreamHandler(this));
+        _appsStreamHandler = new LauncherAppsEventStreamHandler(this);
+        new EventChannel(messenger, APPS_EVENT_CHANNEL).setStreamHandler(_appsStreamHandler);
 
-        new EventChannel(messenger, NETWORK_EVENT_CHANNEL).setStreamHandler(
-                new NetworkEventStreamHandler(this));
+        _networkStreamHandler = new NetworkEventStreamHandler(this);
+        new EventChannel(messenger, NETWORK_EVENT_CHANNEL).setStreamHandler(_networkStreamHandler);
 
-        new EventChannel(messenger, NOTIFICATIONS_EVENT_CHANNEL).setStreamHandler(
-                new EventChannel.StreamHandler() {
-                    private LauncherNotificationListenerService.NotificationListener listener;
+        _notificationsStreamHandler = new EventChannel.StreamHandler() {
+            private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+            private LauncherNotificationListenerService.NotificationListener listener;
+            private Runnable emit;
+            private List<Map<String, Object>> lastSent;
 
+            @Override
+            public void onListen(Object arguments, EventChannel.EventSink events) {
+                final java.util.concurrent.atomic.AtomicBoolean scheduled =
+                        new java.util.concurrent.atomic.AtomicBoolean(false);
+                final Runnable thisEmit = new Runnable() {
                     @Override
-                    public void onListen(Object arguments, EventChannel.EventSink events) {
-                        listener = () -> {
-                            runOnUiThread(() -> {
-                                try {
-                                    events.success(getActiveNotifications());
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                            });
-                        };
-                        LauncherNotificationListenerService.registerListener(listener);
-                        // Send current state immediately
-                        listener.onNotificationChanged();
-                    }
-
-                    @Override
-                    public void onCancel(Object arguments) {
-                        if (listener != null) {
-                            LauncherNotificationListenerService.unregisterListener(listener);
-                            listener = null;
+                    public void run() {
+                        scheduled.set(false);
+                        if (emit != this) return; // Cancelled meanwhile.
+                        List<Map<String, Object>> current = getActiveNotifications();
+                        // Most bursts change nothing that a badge shows.
+                        if (current.equals(lastSent)) return;
+                        lastSent = current;
+                        try {
+                            events.success(current);
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
                     }
+                };
+                emit = thisEmit;
+                lastSent = null;
+                // A throttle, not a debounce: a steady stream of updates must
+                // still get through, just not more often than the interval.
+                listener = () -> {
+                    if (scheduled.compareAndSet(false, true)) {
+                        handler.postDelayed(thisEmit, NOTIFICATIONS_THROTTLE_MS);
+                    }
+                };
+                LauncherNotificationListenerService.registerListener(listener);
+                // Send the current state straight away.
+                handler.post(thisEmit);
+            }
+
+            @Override
+            public void onCancel(Object arguments) {
+                if (listener != null) {
+                    LauncherNotificationListenerService.unregisterListener(listener);
+                    listener = null;
                 }
-        );
+                if (emit != null) {
+                    handler.removeCallbacks(emit);
+                    emit = null;
+                }
+                lastSent = null;
+            }
+        };
+        new EventChannel(messenger, NOTIFICATIONS_EVENT_CHANNEL).setStreamHandler(_notificationsStreamHandler);
+    }
+
+    @Override
+    public void cleanUpFlutterEngine(@NonNull FlutterEngine flutterEngine) {
+        cancelQuietly(_appsStreamHandler);
+        cancelQuietly(_networkStreamHandler);
+        cancelQuietly(_notificationsStreamHandler);
+        _appsStreamHandler = null;
+        _networkStreamHandler = null;
+        _notificationsStreamHandler = null;
+        super.cleanUpFlutterEngine(flutterEngine);
+    }
+
+    private static void cancelQuietly(EventChannel.StreamHandler handler) {
+        if (handler == null) return;
+        try {
+            handler.onCancel(null);
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+        }
     }
 
     private List<Map<String, Serializable>> getApplications() {
@@ -337,36 +404,36 @@ public class MainActivity extends FlutterActivity {
     private static final int MAX_ICON_WIDTH = 192;
 
     private byte[] getApplicationBanner(String packageName) {
-        byte[] imageBytes = new byte[0];
-
-        PackageManager packageManager = getPackageManager();
-        try {
-            ApplicationInfo info = packageManager.getApplicationInfo(packageName, 0);
-            Drawable drawable = info.loadBanner(packageManager);
-
-            if (drawable != null) {
-                imageBytes = drawableToByteArray(drawable, MAX_BANNER_WIDTH);
-            }
-        } catch (PackageManager.NameNotFoundException ignored) {
-        }
-
-        return imageBytes;
+        return getArtwork(ArtworkCache.BANNER, packageName);
     }
 
     private byte[] getApplicationIcon(String packageName) {
-        byte[] imageBytes = new byte[0];
+        return getArtwork(ArtworkCache.ICON, packageName);
+    }
 
+    /** An app's banner or icon, encoded for Dart; served from disk when possible. */
+    private byte[] getArtwork(String kind, String packageName) {
         PackageManager packageManager = getPackageManager();
+        ArtworkCache cache = artworkCache();
+        String stamp = ArtworkCache.stampOf(packageManager, packageName);
+
+        byte[] cached = cache.get(kind, packageName, stamp);
+        if (cached != null) return cached;
+
+        byte[] imageBytes = new byte[0];
         try {
             ApplicationInfo info = packageManager.getApplicationInfo(packageName, 0);
-            Drawable drawable = info.loadIcon(packageManager);
+            boolean banner = ArtworkCache.BANNER.equals(kind);
+            Drawable drawable = banner ? info.loadBanner(packageManager) : info.loadIcon(packageManager);
 
             if (drawable != null) {
-                imageBytes = drawableToByteArray(drawable, MAX_ICON_WIDTH);
+                imageBytes = drawableToByteArray(drawable, banner ? MAX_BANNER_WIDTH : MAX_ICON_WIDTH);
             }
-        } catch (PackageManager.NameNotFoundException ignored) {
+        } catch (PackageManager.NameNotFoundException e) {
+            return imageBytes; // Gone; nothing worth caching.
         }
 
+        cache.put(kind, packageName, stamp, imageBytes);
         return imageBytes;
     }
 
@@ -1254,7 +1321,9 @@ public class MainActivity extends FlutterActivity {
         try {
             StatusBarNotification[] sbns = service.getActiveNotifications();
             if (sbns != null) {
-                Map<String, Integer> counts = new HashMap<>();
+                // Sorted, so identical states produce equal lists and the event
+                // handler can recognise and skip them.
+                Map<String, Integer> counts = new java.util.TreeMap<>();
                 for (StatusBarNotification sbn : sbns) {
                     if (sbn.isClearable()) {
                         String pkg = sbn.getPackageName();

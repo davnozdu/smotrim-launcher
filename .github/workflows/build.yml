@@ -69,18 +69,25 @@ jobs:
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Every CI build -- tagged or not -- takes its versionCode from the run
+      # number, so codes only ever go up. Branch builds used the pubspec number
+      # instead (9200), which sat above the releases (9000 + run): a test build
+      # installed on a box then blocked every later release there, since Android
+      # refuses a lower versionCode and the in-app updater never offers one.
+      # The base clears every code shipped so far, 9200 included.
       - name: Build release APK (signed)
         if: steps.keystore.outputs.signed == 'true'
         run: |
+          VC=$((10000 + GITHUB_RUN_NUMBER))
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VN="${GITHUB_REF_NAME#v}"
-            VC=$((9000 + GITHUB_RUN_NUMBER))
             echo "Tagged release: name=$VN code=$VC"
             echo "VERSION_NAME=$VN" >> "$GITHUB_ENV"
             echo "VERSION_CODE=$VC" >> "$GITHUB_ENV"
             flutter build apk --release --build-name="$VN" --build-number="$VC"
           else
-            flutter build apk --release
+            echo "Branch build: code=$VC"
+            flutter build apk --release --build-number="$VC"
           fi
 
       - name: Build debug APK (unsigned fallback)

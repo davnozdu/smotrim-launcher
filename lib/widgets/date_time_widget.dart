@@ -45,7 +45,7 @@ class DateTimeWidget extends StatefulWidget {
 class _DateTimeWidgetState extends State<DateTimeWidget> {
   late DateFormat _dateFormat;
   late DateTime   _now;
-  late Timer      _timer;
+  Timer?          _timer;
 
   @override
   void initState() {
@@ -53,7 +53,26 @@ class _DateTimeWidgetState extends State<DateTimeWidget> {
 
     _dateFormat = DateFormat(widget._dateTimeFormatString, Platform.localeName);
     _now = DateTime.now();
-    _timer = Timer.periodic(widget.updateInterval ?? _defaultInterval(), (_) => _refreshTime());
+    _scheduleTick();
+  }
+
+  /// Fires on the next interval boundary (the turn of the minute, or of the
+  /// second), then re-arms itself.
+  ///
+  /// A plain Timer.periodic started whenever the widget happened to mount, so
+  /// with a one-minute interval the clock could show the previous minute for up
+  /// to 59 seconds.
+  void _scheduleTick() {
+    _timer?.cancel();
+    final periodMs = (widget.updateInterval ?? _defaultInterval()).inMilliseconds;
+    final delayMs = periodMs <= 0
+        ? 1000
+        : periodMs - DateTime.now().millisecondsSinceEpoch % periodMs;
+    _timer = Timer(Duration(milliseconds: delayMs), () {
+      if (!mounted) return;
+      _refreshTime();
+      _scheduleTick();
+    });
   }
 
   /// Returns a 1-second interval if the format actually renders seconds,
@@ -91,9 +110,7 @@ class _DateTimeWidgetState extends State<DateTimeWidget> {
     }
 
     if (formatChanged || intervalChanged) {
-      _timer.cancel();
-      _timer = Timer.periodic(
-          widget.updateInterval ?? _defaultInterval(), (_) => _refreshTime());
+      _scheduleTick();
       setState(() {
         _now = DateTime.now();
       });
@@ -102,7 +119,7 @@ class _DateTimeWidgetState extends State<DateTimeWidget> {
 
   @override
   void dispose() {
-    _timer.cancel();
+    _timer?.cancel();
     super.dispose();
   }
 
@@ -121,6 +138,7 @@ class _DateTimeWidgetState extends State<DateTimeWidget> {
   }
 
   void _refreshTime() {
+    if (!mounted) return;
     setState(() {
       _now = DateTime.now();
     });

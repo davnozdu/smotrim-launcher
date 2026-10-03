@@ -41,7 +41,10 @@ class LauncherState extends ChangeNotifier
   }
 
   Future<void> refresh(AppsService appsService) async {
-    _isDefaultLauncher = await appsService.isDefaultLauncher();
+    final isDefault = await appsService.isDefaultLauncher();
+    // Called on every Back press; only a real change is worth a rebuild.
+    if (isDefault == _isDefaultLauncher) return;
+    _isDefaultLauncher = isDefault;
     notifyListeners();
   }
 
