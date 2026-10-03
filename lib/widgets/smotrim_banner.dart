@@ -17,6 +17,17 @@ import 'package:flauncher/l10n/app_localizations.dart';
 class SmotrimBanner extends StatelessWidget {
   static const String brand = "smotrim.cz";
   static const String phone = "+420608210867";
+  static const String newsSite = "24n.cz";
+
+  // Bright tones: the bar sits on a dark wallpaper, where darker reds and
+  // blues would barely read.
+  static const Color _brandBlue = Color(0xFF448AFF);
+  static const Color _newsRed = Color(0xFFFF3D3D);
+  static const Color _newsYellow = Color(0xFFFFD600);
+
+  static const List<Shadow> _shadows = [
+    Shadow(color: Colors.black, offset: Offset(0, 1), blurRadius: 4),
+  ];
 
   const SmotrimBanner({super.key});
 
@@ -24,13 +35,11 @@ class SmotrimBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    const textStyle = TextStyle(
+    const baseStyle = TextStyle(
       fontSize: 16,
-      fontWeight: FontWeight.w500,
+      fontWeight: FontWeight.w600,
       color: Colors.white,
-      shadows: [
-        Shadow(color: Colors.black87, offset: Offset(0, 1), blurRadius: 4),
-      ],
+      shadows: _shadows,
     );
 
     return IgnorePointer(
@@ -44,28 +53,50 @@ class SmotrimBanner extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             spacing: 16,
             children: [
-            const Text(brand, style: textStyle),
+            const Text(
+              brand,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: _brandBlue,
+                shadows: _shadows,
+              ),
+            ),
             const Text(
               phone,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
-                shadows: [
-                  Shadow(color: Colors.black87, offset: Offset(0, 1), blurRadius: 4),
-                ],
+                decoration: TextDecoration.underline,
+                decorationColor: Colors.white,
+                decorationThickness: 1.5,
+                shadows: _shadows,
               ),
             ),
-            // The news link is the eye-catcher of the bar: bright amber and
-            // heavier than the white brand text around it.
-            Text(
-              "— ${localizations.bannerTagline}",
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFFFFC107),
-                shadows: [
-                  Shadow(color: Colors.black, offset: Offset(0, 1), blurRadius: 4),
+            // The news link is the eye-catcher of the bar: a red site name and
+            // a yellow description, both heavier than the text around them.
+            Text.rich(
+              TextSpan(
+                style: baseStyle,
+                children: [
+                  const TextSpan(text: "— "),
+                  const TextSpan(
+                    text: newsSite,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: _newsRed,
+                    ),
+                  ),
+                  TextSpan(
+                    text: " — ${localizations.bannerTagline}",
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: _newsYellow,
+                    ),
+                  ),
                 ],
               ),
             ),
